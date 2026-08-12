@@ -1,7 +1,10 @@
+import DietaryAdviceCard from "../components/DietaryAdviceCard";
+// adjust the relative path (../components/...) to match where you actually saved the file
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
+import ChatbotModal from '../components/ChatbotModal';
 import type { Report, Analysis } from '../types';
 
 export default function ReportDetailPage() {
@@ -11,6 +14,7 @@ export default function ReportDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
 
   const fetchReport = async () => {
     try {
@@ -92,7 +96,8 @@ export default function ReportDetailPage() {
     );
   }
 
-  const fileUrl = report ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${report.userId}/${report.filePath.split(/[\\/]/).pop()}` : '';
+  const apiBaseUrl = ((import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL) || 'http://localhost:5000';
+  const fileUrl = report ? `${apiBaseUrl}/uploads/${report.userId}/${report.filePath.split(/[\\/]/).pop()}` : '';
 
   const scrollToDocument = () => {
     document.getElementById('document-viewer')?.scrollIntoView({ behavior: 'smooth' });
@@ -185,9 +190,24 @@ export default function ReportDetailPage() {
 
             {analysis.diagnoses && analysis.diagnoses.length > 0 && (
               <div className="card border-l-4 border-blue-500">
-                <h2 className="analysis-section-title text-blue-600">
-                  🩺 Diagnosed Health Issue
-                </h2>
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="analysis-section-title text-blue-600" style={{ margin: 0 }}>
+                    🩺 Diagnosed Health Issue
+                  </h2>
+                  <button
+                    onClick={() => setShowChatbot(true)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      background: 'linear-gradient(135deg, #0891b2, #6366f1)',
+                      color: 'white', border: 'none', borderRadius: '20px',
+                      padding: '7px 16px', fontWeight: 600, fontSize: '13px',
+                      cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                    title="AI-powered doctor recommendation based on your diagnosis"
+                  >
+                    🤖 Find a Doctor
+                  </button>
+                </div>
                 <div className="flex flex-col gap-2">
                   {analysis.diagnoses.map((diagnosis, idx) => (
                     <a 
@@ -217,29 +237,12 @@ export default function ReportDetailPage() {
               </div>
             )}
 
-            {analysis.dietaryAdvice && (analysis.dietaryAdvice.eat?.length > 0 || analysis.dietaryAdvice.avoid?.length > 0) && (
-              <div className="card">
+            {analysis.dietaryAdvice && (
+             <div className="card">
                 <h2 className="analysis-section-title">
-                  🍎 Dietary Recommendations
+                    🍎 Dietary Recommendations
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                  {analysis.dietaryAdvice.eat && analysis.dietaryAdvice.eat.length > 0 && (
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-green-700 mb-2">Foods to Eat ✓</h3>
-                      <ul className="list-disc pl-4 space-y-1 text-sm text-green-900">
-                        {analysis.dietaryAdvice.eat.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                  {analysis.dietaryAdvice.avoid && analysis.dietaryAdvice.avoid.length > 0 && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-red-700 mb-2">Foods to Avoid ✗</h3>
-                      <ul className="list-disc pl-4 space-y-1 text-sm text-red-900">
-                        {analysis.dietaryAdvice.avoid.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+                <DietaryAdviceCard advice={analysis.dietaryAdvice} />
               </div>
             )}
 
@@ -380,6 +383,14 @@ export default function ReportDetailPage() {
           </div>
           
         </div>
+      )}
+
+      {/* Chatbot Modal for Doctor Routing */}
+      {showChatbot && analysis?.diagnoses && analysis.diagnoses.length > 0 && (
+        <ChatbotModal
+          diagnoses={analysis.diagnoses}
+          onClose={() => setShowChatbot(false)}
+        />
       )}
     </div>
   );

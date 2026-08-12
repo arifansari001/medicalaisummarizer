@@ -1,4 +1,4 @@
-import { type Response } from 'express';
+import { type Response, type Request } from 'express';
 import crypto from 'crypto';
 import { ShareRecord } from '../models/ShareRecord.js';
 import { User } from '../models/User.js';
@@ -7,6 +7,7 @@ import { Report } from '../models/Report.js';
 import { Analysis } from '../models/Analysis.js';
 import { createShareSchema } from '../utils/validators.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
+import { sendShareEmail } from '../services/email.service.js';
 
 export async function createShare(req: AuthRequest, res: Response) {
   const patientId = req.userId;
@@ -55,6 +56,22 @@ export async function createShare(req: AuthRequest, res: Response) {
     accessToken,
     expiresAt,
   });
+
+  // Send email notification to the doctor with the share link
+  const patient = await User.findById(patientId).select('name');
+  const patientName = patient?.name || 'A patient';
+  const shareLink = `${process.env.APP_BASE_URL}/shared/${accessToken}`;
+
+  try {
+    await sendShareEmail({
+      toEmail: data.doctorEmail,
+      patientName,
+      shareLink,
+      expiresAt,
+    });
+  } catch (emailErr) {
+    console.error('⚠️ Email sending failed (share still created):', emailErr);
+  }
 
   res.status(201).json({ share });
 }

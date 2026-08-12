@@ -10,6 +10,11 @@ import eventsRoutes from './routes/events.routes.js';
 import profileRoutes from './routes/profile.routes.js';
 import searchRoutes from './routes/search.routes.js';
 import shareRoutes from './routes/share.routes.js';
+import chatRoutes from './routes/chat.routes.js';
+import doctorsRoutes from './routes/doctors.routes.js';
+import storesRoutes from './routes/stores.routes.js';
+import appointmentRoutes from './routes/appointment.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +43,11 @@ app.use('/api/medical-events', eventsRoutes);
 app.use('/api/users/profile', profileRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/shares', shareRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/doctors', doctorsRoutes);
+app.use('/api/stores', storesRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

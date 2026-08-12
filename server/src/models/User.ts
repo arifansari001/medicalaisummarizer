@@ -8,6 +8,22 @@ const userSchema = new Schema({
   gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'] },
   profileImage: { type: String },
   role: { type: String, enum: ['patient', 'doctor'], default: 'patient' },
+  // Doctor-specific fields
+  specialty: { type: String },
+  consultationFee: { type: Number },
+  rating: { type: Number },
+  location: {
+    lat: { type: Number },
+    lng: { type: Number },
+    address: { type: String }
+  },
+  clinicName: { type: String },
+  opdSchedule: [{
+    day: { type: String },
+    startTime: { type: String },
+    endTime: { type: String },
+    avgWaitMinutes: { type: Number }
+  }]
 }, {
   timestamps: true,
 });

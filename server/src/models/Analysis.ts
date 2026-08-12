@@ -33,7 +33,9 @@ const analysisSchema = new Schema({
   preventionTips: [{ type: String }],
   dietaryAdvice: {
     eat: [{ type: String }],
-    avoid: [{ type: String }]
+    avoid: [{ type: String }],
+    generalOnly: { type: Boolean, default: false },
+    disclaimer: { type: String, default: '' }
   },
   modelUsed: { type: String, default: 'llama-3.3-70b-versatile' },
 }, {

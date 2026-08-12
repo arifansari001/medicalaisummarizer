@@ -6,13 +6,13 @@ import type { MedicalEvent, Report } from '../types';
 
 interface TimelineItem {
   id: string;
-  type: 'event' | 'report';
+  type: 'event' | 'report' | 'appointment';
   date: string;
   title: string;
   subtitle: string;
   category: string;
   status: string;
-  raw: MedicalEvent | Report;
+  raw: any;
 }
 
 export default function TimelinePage() {
@@ -23,13 +23,15 @@ export default function TimelinePage() {
   useEffect(() => {
     async function fetchTimelineData() {
       try {
-        const [eventsRes, reportsRes] = await Promise.all([
+        const [eventsRes, reportsRes, appointmentsRes] = await Promise.all([
           api.get<{ events: MedicalEvent[] }>('/medical-events?limit=100'),
           api.get<{ reports: Report[] }>('/reports?limit=100'),
+          api.get<{ appointments: any[] }>('/appointments/me').catch(() => ({ data: { appointments: [] } })),
         ]);
 
         const eventsList = eventsRes.data.events || [];
         const reportsList = reportsRes.data.reports || [];
+        const appointmentsList = appointmentsRes.data.appointments || [];
 
         const timelineEvents: TimelineItem[] = eventsList.map(e => ({
           id: e._id,
@@ -53,7 +55,18 @@ export default function TimelinePage() {
           raw: r,
         }));
 
-        const merged = [...timelineEvents, ...timelineReports].sort(
+        const timelineAppointments: TimelineItem[] = appointmentsList.map(a => ({
+          id: a._id,
+          type: 'appointment',
+          date: a.date,
+          title: `Appointment with ${a.doctor?.name || 'Doctor'}`,
+          subtitle: `${a.timeSlot} • ${a.reason || 'Routine Checkup'}`,
+          category: 'appointment',
+          status: a.status,
+          raw: a,
+        }));
+
+        const merged = [...timelineEvents, ...timelineReports, ...timelineAppointments].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
@@ -77,6 +90,30 @@ export default function TimelinePage() {
   }, {});
 
   const years = Object.keys(groupedByYear).sort((a, b) => Number(b) - Number(a));
+
+  const generateICS = (e: React.MouseEvent, appointment: any) => {
+    e.stopPropagation();
+    const startDate = new Date(appointment.date);
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//MedSummary AI//EN
+BEGIN:VEVENT
+UID:${appointment._id}@medsummary.ai
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTSTART:${startDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+SUMMARY:Appointment with ${appointment.doctor?.name || 'Doctor'}
+DESCRIPTION:${appointment.reason || 'Checkup'}\\nClinic: ${appointment.doctor?.clinicName || ''}
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `appointment_${appointment._id}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="timeline-page animate-fade-in">
@@ -118,19 +155,19 @@ export default function TimelinePage() {
                 <div key={item.id} className="timeline-item">
                   <div
                     className="card"
-                    onClick={() =>
-                      item.type === 'event'
-                        ? navigate(`/history/${item.id}`)
-                        : navigate(`/reports/${item.id}`)
-                    }
+                    onClick={() => {
+                      if (item.type === 'event') navigate(`/history/${item.id}`);
+                      else if (item.type === 'report') navigate(`/reports/${item.id}`);
+                      // no default route for appointments yet
+                    }}
                   >
                     <div className="timeline-item-header">
                       <span className="timeline-item-icon">
-                        {item.type === 'report' ? '📄' : '📋'}
+                        {item.type === 'report' ? '📄' : item.type === 'appointment' ? '🗓️' : '📋'}
                       </span>
                       <span className="timeline-item-title">{item.title}</span>
 
-                      <span className={`badge badge-${item.type === 'event' ? 'info' : item.status}`}>
+                      <span className={`badge badge-${item.type === 'event' ? 'info' : item.type === 'appointment' ? 'warning' : item.status}`}>
                         {item.category.replace('_', ' ')}
                       </span>
 
@@ -140,7 +177,21 @@ export default function TimelinePage() {
                     </div>
 
                     {item.subtitle && (
-                      <p className="timeline-item-body">{item.subtitle}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <p className="timeline-item-body" style={{ margin: 0 }}>{item.subtitle}</p>
+                        {item.type === 'appointment' && (
+                          <button
+                            onClick={(e) => generateICS(e, item.raw)}
+                            style={{
+                              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px',
+                              padding: '6px 10px', fontSize: '12px', fontWeight: 600, color: '#0891b2',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            📅 Add to Calendar
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

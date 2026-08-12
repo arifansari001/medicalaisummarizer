@@ -35,6 +35,8 @@ export interface AnalysisOutput {
   dietaryAdvice: {
     eat: string[];
     avoid: string[];
+    generalOnly: boolean;
+    disclaimer: string;
   };
 }
 
@@ -76,8 +78,10 @@ Return ONLY a valid JSON object (no markdown, no code fences, no extra commentar
   },
   "preventionTips": string[],
   "dietaryAdvice": {
-    "eat": string[],
-    "avoid": string[]
+    "eat": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
+    "avoid": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
+    "generalOnly": boolean, // true if the condition is complex/high-risk (kidney, liver, cancer, heart, pregnancy) - keep tips broad in that case
+    "disclaimer": string // e.g. "This is general wellness guidance, not medical advice. Please consult your doctor or a registered dietitian before making dietary changes."
   }
 }
 

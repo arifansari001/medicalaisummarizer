@@ -132,6 +132,8 @@ export interface Analysis {
   dietaryAdvice: {
     eat: string[];
     avoid: string[];
+    generalOnly: boolean;
+    disclaimer: string;
   };
   modelUsed: string;
   createdAt: string;

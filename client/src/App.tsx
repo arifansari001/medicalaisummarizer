@@ -16,11 +16,16 @@ import NotFoundPage from './pages/NotFoundPage';
 import ProfilePage from './pages/ProfilePage';
 import DoctorSharedRecordPage from './pages/DoctorSharedRecordPage';
 import SharedReportView from './components/SharedReportView';
+import DoctorDirectoryPage from './pages/DoctorDirectoryPage';
+import MedicalStorePage from './pages/MedicalStorePage';
+
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
+    <ErrorBoundary fallbackTitle="Application Error">
+      <BrowserRouter>
+        <AuthProvider>
         <Routes>
           {/* Public Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -37,6 +42,8 @@ export default function App() {
             <Route path="/history/:id" element={<EventDetailPage />} />
             <Route path="/timeline" element={<TimelinePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/doctors" element={<DoctorDirectoryPage />} />
+            <Route path="/stores" element={<MedicalStorePage />} />
             <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
             <Route path="/doctor/share/:id" element={<DoctorSharedRecordPage />} />
           </Route>
@@ -47,5 +54,6 @@ export default function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+  </ErrorBoundary>
   );
 }

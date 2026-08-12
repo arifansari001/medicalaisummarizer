@@ -79,8 +79,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Action Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* Feature Navigation Actions */}
+      <div className="feature-actions-grid">
+        <button className="feature-action-btn triage-btn" onClick={() => navigate('/doctors')}>
+          <div className="btn-icon">🤖</div>
+          <div className="btn-text">
+            <h3>AI Triage & Doctors</h3>
+            <p>Check symptoms & find specialists</p>
+          </div>
+        </button>
+        <button className="feature-action-btn store-btn" onClick={() => navigate('/stores')}>
+          <div className="btn-icon">💊</div>
+          <div className="btn-text">
+            <h3>Medicines & Blood</h3>
+            <p>Find nearby pharmacies & banks</p>
+          </div>
+        </button>
+        <button className="feature-action-btn timeline-btn" onClick={() => navigate('/timeline')}>
+          <div className="btn-icon">📈</div>
+          <div className="btn-text">
+            <h3>Health Timeline</h3>
+            <p>View your AI health journey</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 mt-4">
         {/* Recent Reports */}
         <div className="card">
           <div className="card-header">

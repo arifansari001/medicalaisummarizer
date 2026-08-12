@@ -8,6 +8,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  const [specialty, setSpecialty] = useState('General Medicine');
+  const [clinicName, setClinicName] = useState('');
+  const [consultationFee, setConsultationFee] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -24,7 +27,17 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register({ name, email, password, role });
+      await register({ 
+        name, 
+        email, 
+        password, 
+        role,
+        ...(role === 'doctor' && {
+          specialty,
+          clinicName,
+          consultationFee: consultationFee ? Number(consultationFee) : 0
+        })
+      });
       if (role === 'doctor') {
         navigate('/doctor/dashboard');
       } else {
@@ -85,6 +98,56 @@ export default function RegisterPage() {
               <option value="doctor">Healthcare Professional (View Shared Records)</option>
             </select>
           </div>
+
+          {role === 'doctor' && (
+            <>
+              <div className="form-group">
+                <label htmlFor="specialty">Specialty</label>
+                <select
+                  id="specialty"
+                  value={specialty}
+                  onChange={e => setSpecialty(e.target.value)}
+                  style={{
+                    width: '100%', padding: '0.75rem', border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--border-radius)', backgroundColor: 'var(--card-bg)',
+                    color: 'var(--text-primary)', fontSize: '1rem',
+                  }}
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Nephrology">Nephrology</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Gynecology">Gynecology</option>
+                  <option value="Dermatology">Dermatology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Endocrinology">Endocrinology</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="clinicName">Clinic/Hospital Name</label>
+                <input
+                  id="clinicName"
+                  type="text"
+                  value={clinicName}
+                  onChange={e => setClinicName(e.target.value)}
+                  placeholder="e.g. Apollo Hospital"
+                  required={role === 'doctor'}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="consultationFee">Consultation Fee (₹)</label>
+                <input
+                  id="consultationFee"
+                  type="number"
+                  value={consultationFee}
+                  onChange={e => setConsultationFee(e.target.value)}
+                  placeholder="e.g. 500"
+                  required={role === 'doctor'}
+                />
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label htmlFor="email">Email</label>

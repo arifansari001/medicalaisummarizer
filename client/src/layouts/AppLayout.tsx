@@ -70,6 +70,24 @@ export default function AppLayout() {
               <span>Health Timeline</span>
             </NavLink>
 
+            <NavLink 
+              to="/doctors" 
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <span className="nav-icon">👨‍⚕️</span>
+              <span>Find Doctors</span>
+            </NavLink>
+
+            <NavLink 
+              to="/stores" 
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <span className="nav-icon">💊</span>
+              <span>Medical Stores</span>
+            </NavLink>
+
             {user?.role === 'doctor' && (
               <NavLink 
                 to="/doctor/dashboard" 

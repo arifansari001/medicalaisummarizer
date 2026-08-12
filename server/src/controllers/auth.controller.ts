@@ -25,6 +25,9 @@ export async function register(req: Request, res: Response) {
     email: data.email,
     passwordHash,
     role: data.role,
+    specialty: data.specialty,
+    clinicName: data.clinicName,
+    consultationFee: data.consultationFee,
   });
 
   const token = generateToken(user._id.toString());
