@@ -18,6 +18,7 @@ import DoctorSharedRecordPage from './pages/DoctorSharedRecordPage';
 import SharedReportView from './components/SharedReportView';
 import DoctorDirectoryPage from './pages/DoctorDirectoryPage';
 import MedicalStorePage from './pages/MedicalStorePage';
+import ChatPage from './pages/ChatPage';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/doctors" element={<DoctorDirectoryPage />} />
             <Route path="/stores" element={<MedicalStorePage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
             <Route path="/doctor/share/:id" element={<DoctorSharedRecordPage />} />
           </Route>

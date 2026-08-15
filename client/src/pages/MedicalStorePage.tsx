@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../services/api';
+import polyline from '@mapbox/polyline';
 
 function getLeafletIcon(iconUrl: string) {
   try {
@@ -20,29 +21,33 @@ function getLeafletIcon(iconUrl: string) {
 
 const PHARMACY_ICON = getLeafletIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png');
 const BLOOD_ICON = getLeafletIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png');
+const DIAGNOSTIC_ICON = getLeafletIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png');
 const USER_ICON = getLeafletIcon('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png');
 
 interface Store {
   _id: string;
   name: string;
-  type: 'pharmacy' | 'blood_bank';
+  type: 'pharmacy' | 'blood_bank' | 'diagnostic_center';
   location: { lat: number; lng: number; address: string };
   phone?: string;
   openHours?: string;
   medicineInventory?: string[];
   bloodGroups?: string[];
+  diagnosticTests?: { name: string; price: number; turnaroundTime: string }[];
   distanceKm: number | null;
 }
 
-function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
+function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords, routeCoords }: {
   stores: Store[];
   selectedStore: Store | null;
   onSelectStore: (s: Store) => void;
   userCoords: { lat: number; lng: number } | null;
+  routeCoords: [number, number][] | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerGroupRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.Polyline | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -80,7 +85,7 @@ function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
     stores.forEach((s) => {
       if (s.location && typeof s.location.lat === 'number' && typeof s.location.lng === 'number' && !isNaN(s.location.lat) && !isNaN(s.location.lng)) {
         try {
-          const icon = s.type === 'pharmacy' ? PHARMACY_ICON : BLOOD_ICON;
+          const icon = s.type === 'pharmacy' ? PHARMACY_ICON : s.type === 'blood_bank' ? BLOOD_ICON : DIAGNOSTIC_ICON;
           const marker = L.marker([s.location.lat, s.location.lng], {
             icon: icon || undefined
           }).addTo(markerGroup);
@@ -88,7 +93,7 @@ function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
           marker.bindPopup(`
             <div style="min-width: 150px; font-family: sans-serif;">
               <strong style="color: #0f172a;">${s.name || ''}</strong><br/>
-              <span style="font-size: 12px; color: #0891b2;">${s.type === 'pharmacy' ? '💊 Pharmacy' : '🩸 Blood Bank'}</span><br/>
+              <span style="font-size: 12px; color: #0891b2;">${s.type === 'pharmacy' ? '💊 Pharmacy' : s.type === 'blood_bank' ? '🩸 Blood Bank' : '🔬 Diagnostic Center'}</span><br/>
               <span style="font-size: 11px; color: #64748b;">${s.location.address || ''}</span><br/>
               ${s.phone ? `<span style="font-size: 11px; color: #475569;">📞 ${s.phone}</span>` : ''}
             </div>
@@ -98,7 +103,21 @@ function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
         } catch (e) {}
       }
     });
-  }, [stores, selectedStore, userCoords, onSelectStore]);
+
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
+    }
+
+    if (routeCoords && routeCoords.length > 0) {
+      try {
+        const pline = L.polyline(routeCoords, { color: '#6366f1', weight: 5, opacity: 0.8 }).addTo(map);
+        routeLayerRef.current = pline;
+        map.fitBounds(pline.getBounds(), { padding: [40, 40] });
+      } catch (e) {}
+    }
+
+  }, [stores, selectedStore, userCoords, onSelectStore, routeCoords]);
 
   useEffect(() => {
     return () => {
@@ -108,6 +127,7 @@ function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
         } catch (e) {}
         mapInstanceRef.current = null;
         markerGroupRef.current = null;
+        routeLayerRef.current = null;
       }
     };
   }, []);
@@ -118,12 +138,15 @@ function PureStoreMap({ stores, selectedStore, onSelectStore, userCoords }: {
 export default function MedicalStorePage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState<'all' | 'pharmacy' | 'blood_bank'>('all');
+  const [type, setType] = useState<'all' | 'pharmacy' | 'blood_bank' | 'diagnostic_center'>('all');
   const [query, setQuery] = useState('');
   const [inputVal, setInputVal] = useState('');
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(null);
+  const [routeStats, setRouteStats] = useState<{ distance: string; duration: string } | null>(null);
+  const [routing, setRouting] = useState(false);
 
   const fetchStores = useCallback(async () => {
     setLoading(true);
@@ -158,6 +181,37 @@ export default function MedicalStorePage() {
     setQuery(inputVal);
   };
 
+  const getDirections = async (store: Store) => {
+    if (!userCoords) {
+      alert('Please enable location (click "Near Me") to get directions.');
+      return;
+    }
+    setRouting(true);
+    setRouteCoords(null);
+    setRouteStats(null);
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${userCoords.lng},${userCoords.lat};${store.location.lng},${store.location.lat}?overview=full`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        const coords = polyline.decode(route.geometry);
+        setRouteCoords(coords as [number, number][]);
+        
+        const distKm = (route.distance / 1000).toFixed(1);
+        const durMin = Math.ceil(route.duration / 60);
+        setRouteStats({ distance: `${distKm} km`, duration: `${durMin} min` });
+      } else {
+        alert('Could not calculate a route.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to get directions.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
   const mapCenter: [number, number] = userCoords ? [userCoords.lat, userCoords.lng] : [26.85, 80.95];
 
   const bloodGroupColors: Record<string, string> = {
@@ -182,13 +236,13 @@ export default function MedicalStorePage() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
         {/* Type filter */}
         <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1.5px solid #e2e8f0' }}>
-          {(['all', 'pharmacy', 'blood_bank'] as const).map((t) => (
+          {(['all', 'pharmacy', 'blood_bank', 'diagnostic_center'] as const).map((t) => (
             <button key={t} onClick={() => setType(t)} style={{
               padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
               background: type === t ? '#0891b2' : '#f8fafc',
               color: type === t ? 'white' : '#64748b',
             }}>
-              {t === 'all' ? '🏪 All' : t === 'pharmacy' ? '💊 Pharmacies' : '🩸 Blood Banks'}
+              {t === 'all' ? '🏪 All' : t === 'pharmacy' ? '💊 Pharmacies' : t === 'blood_bank' ? '🩸 Blood Banks' : '🔬 Diagnostics'}
             </button>
           ))}
         </div>
@@ -198,7 +252,7 @@ export default function MedicalStorePage() {
           <input
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            placeholder={type === 'blood_bank' ? 'Search blood group (e.g. O+)...' : 'Search medicine name...'}
+            placeholder={type === 'blood_bank' ? 'Search blood group (e.g. O+)...' : type === 'diagnostic_center' ? 'Search test name (e.g. MRI)...' : 'Search medicine name...'}
             style={{
               flex: 1, padding: '9px 14px', borderRadius: '8px',
               border: '1.5px solid #e2e8f0', fontSize: '14px'
@@ -233,10 +287,10 @@ export default function MedicalStorePage() {
         </span>
       </div>
 
-      {/* Map Legend */}
       <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#64748b' }}>
         <span>🟢 Pharmacy</span>
         <span>🔴 Blood Bank</span>
+        <span>🟣 Diagnostic Center</span>
         <span>🔵 Your Location</span>
       </div>
 
@@ -249,6 +303,7 @@ export default function MedicalStorePage() {
             selectedStore={selectedStore}
             onSelectStore={(s) => setSelectedStore(s)}
             userCoords={userCoords}
+            routeCoords={routeCoords}
           />
         </div>
 
@@ -264,16 +319,19 @@ export default function MedicalStorePage() {
               <p style={{ color: '#64748b', marginTop: '8px' }}>No results found. Try a different search.</p>
             </div>
           ) : stores.map((store) => (
-            <div key={store._id} onClick={() => setSelectedStore(store === selectedStore ? null : store)}
+            <div key={store._id} 
               style={{
-                background: selectedStore?._id === store._id ? (store.type === 'pharmacy' ? '#f0fdf4' : '#fff1f2') : '#fff',
-                border: `1.5px solid ${selectedStore?._id === store._id ? (store.type === 'pharmacy' ? '#10b981' : '#ef4444') : '#e2e8f0'}`,
-                borderRadius: '10px', padding: '14px', cursor: 'pointer', transition: 'all 0.2s'
+                background: selectedStore?._id === store._id ? (store.type === 'pharmacy' ? '#f0fdf4' : store.type === 'blood_bank' ? '#fff1f2' : '#faf5ff') : '#fff',
+                border: `1.5px solid ${selectedStore?._id === store._id ? (store.type === 'pharmacy' ? '#10b981' : store.type === 'blood_bank' ? '#ef4444' : '#a855f7') : '#e2e8f0'}`,
+                borderRadius: '10px', padding: '14px', transition: 'all 0.2s'
               }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }}
+                onClick={() => setSelectedStore(store === selectedStore ? null : store)}
+              >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>{store.type === 'pharmacy' ? '💊' : '🩸'}</span>
+                    <span style={{ fontSize: '20px' }}>{store.type === 'pharmacy' ? '💊' : store.type === 'blood_bank' ? '🩸' : '🔬'}</span>
                     <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{store.name}</span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>📍 {store.location.address}</div>
@@ -317,6 +375,47 @@ export default function MedicalStorePage() {
                       </div>
                     </>
                   )}
+                  {store.type === 'diagnostic_center' && store.diagnosticTests && store.diagnosticTests.length > 0 && (
+                    <>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Available Tests:</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {store.diagnosticTests.map((t, i) => (
+                          <div key={i} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            background: query && t.name.toLowerCase().includes(query.toLowerCase()) ? '#faf5ff' : '#f8fafc',
+                            border: query && t.name.toLowerCase().includes(query.toLowerCase()) ? '1px solid #d8b4fe' : '1px solid #e2e8f0',
+                            padding: '8px 12px', borderRadius: '8px',
+                          }}>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{t.name}</div>
+                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>⏱ TAT: {t.turnaroundTime}</div>
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#a855f7' }}>
+                              ₹{t.price}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); getDirections(store); }}
+                      disabled={routing}
+                      style={{
+                        padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px',
+                        fontSize: '13px', fontWeight: 600, cursor: routing ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {routing ? 'Calculating...' : '🗺️ Get Directions'}
+                    </button>
+                    {routeStats && routeCoords && selectedStore?._id === store._id && (
+                      <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600 }}>
+                        🚗 {routeStats.duration} ({routeStats.distance}) via driving
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -26,6 +26,7 @@ export const getStores = async (req: AuthRequest, res: Response) => {
         { medicineInventory: rx },
         { bloodGroups: rx },
         { name: rx },
+        { 'diagnosticTests.name': rx }
       ];
     }
 

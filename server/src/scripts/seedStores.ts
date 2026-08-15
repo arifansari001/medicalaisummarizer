@@ -37,6 +37,44 @@ const seedStores = async () => {
     { name: 'Sahara Blood Bank', address: 'Sahara Estate, Lucknow', groups: ['O+', 'O-', 'B+', 'A+'] },
   ];
 
+  const diagnosticCenters = [
+    {
+      name: 'CityScan Imaging & Diagnostics', address: 'Gomti Nagar, Lucknow',
+      tests: [
+        { name: 'Whole Body PET-CT Scan', price: 25000, turnaroundTime: '48 Hours' },
+        { name: 'Cardiac MRI', price: 12000, turnaroundTime: '24 Hours' },
+        { name: 'Comprehensive Thyroid Panel', price: 1500, turnaroundTime: '12 Hours' },
+        { name: 'BRCA1 & BRCA2 Genetic Testing', price: 18000, turnaroundTime: '7 Days' }
+      ]
+    },
+    {
+      name: 'Pioneer Genetic & Path Labs', address: 'Hazratganj, Lucknow',
+      tests: [
+        { name: 'Non-Invasive Prenatal Testing (NIPT)', price: 15000, turnaroundTime: '5 Days' },
+        { name: 'Autoimmune Profile (ANA/ANCA)', price: 4500, turnaroundTime: '48 Hours' },
+        { name: 'HbA1c & Fasting Insulin', price: 800, turnaroundTime: '12 Hours' },
+        { name: 'Advanced Celiac Disease Panel', price: 5500, turnaroundTime: '72 Hours' }
+      ]
+    },
+    {
+      name: 'Apex Precision Diagnostics', address: 'Aliganj, Lucknow',
+      tests: [
+        { name: 'DEXA Bone Density Scan', price: 2500, turnaroundTime: '24 Hours' },
+        { name: 'Pharmacogenomics (PGx) Panel', price: 22000, turnaroundTime: '10 Days' },
+        { name: 'Sleep Apnea Polysomnography', price: 10000, turnaroundTime: '48 Hours' },
+        { name: 'Cerebrospinal Fluid (CSF) Analysis', price: 3000, turnaroundTime: '24 Hours' }
+      ]
+    },
+    {
+      name: 'Nova Neurological Labs', address: 'Indira Nagar, Lucknow',
+      tests: [
+        { name: 'High-Resolution 3T MRI Brain', price: 9000, turnaroundTime: '24 Hours' },
+        { name: 'Heavy Metals Toxicity Panel', price: 6000, turnaroundTime: '5 Days' },
+        { name: 'Vitamin B12 & D3 Plus Panel', price: 1200, turnaroundTime: '12 Hours' }
+      ]
+    }
+  ];
+
   const storeDocs = [
     ...pharmacies.map((p) => ({
       name: p.name,
@@ -46,6 +84,7 @@ const seedStores = async () => {
       openHours: '8:00 AM – 10:00 PM',
       medicineInventory: p.medicines,
       bloodGroups: [],
+      diagnosticTests: [],
     })),
     ...bloodBanks.map((b) => ({
       name: b.name,
@@ -55,11 +94,22 @@ const seedStores = async () => {
       openHours: '24 Hours',
       medicineInventory: [],
       bloodGroups: b.groups,
+      diagnosticTests: [],
+    })),
+    ...diagnosticCenters.map((d) => ({
+      name: d.name,
+      type: 'diagnostic_center',
+      location: { lat: lkLat(), lng: lkLng(), address: d.address },
+      phone: `98${Math.floor(10000000 + Math.random() * 89999999)}`,
+      openHours: '7:00 AM – 9:00 PM',
+      medicineInventory: [],
+      bloodGroups: [],
+      diagnosticTests: d.tests,
     })),
   ];
 
   await MedicalStore.insertMany(storeDocs);
-  console.log(`✅ Seeded ${storeDocs.length} medical stores (${pharmacies.length} pharmacies + ${bloodBanks.length} blood banks).`);
+  console.log(`✅ Seeded ${storeDocs.length} medical locations (${pharmacies.length} pharmacies, ${bloodBanks.length} blood banks, ${diagnosticCenters.length} diagnostic centers).`);
   process.exit(0);
 };
 

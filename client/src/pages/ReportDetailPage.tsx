@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
-import ChatbotModal from '../components/ChatbotModal';
 import type { Report, Analysis } from '../types';
 
 export default function ReportDetailPage() {
@@ -14,7 +13,6 @@ export default function ReportDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [showChatbot, setShowChatbot] = useState(false);
 
   const fetchReport = async () => {
     try {
@@ -195,7 +193,7 @@ export default function ReportDetailPage() {
                     🩺 Diagnosed Health Issue
                   </h2>
                   <button
-                    onClick={() => setShowChatbot(true)}
+                    onClick={() => navigate('/chat', { state: { initialContext: `I was just diagnosed with ${analysis.diagnoses.join(', ')}. Can you help me find a doctor or understand this better?` } })}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       background: 'linear-gradient(135deg, #0891b2, #6366f1)',
@@ -385,13 +383,7 @@ export default function ReportDetailPage() {
         </div>
       )}
 
-      {/* Chatbot Modal for Doctor Routing */}
-      {showChatbot && analysis?.diagnoses && analysis.diagnoses.length > 0 && (
-        <ChatbotModal
-          diagnoses={analysis.diagnoses}
-          onClose={() => setShowChatbot(false)}
-        />
-      )}
+      {/* Removed old Chatbot Modal */}
     </div>
   );
 }

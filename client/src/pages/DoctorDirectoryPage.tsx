@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../services/api';
 import BookAppointmentModal from '../components/BookAppointmentModal';
+import polyline from '@mapbox/polyline';
 
 // Safe Leaflet icon helper
 function getLeafletIcon(iconUrl: string) {
@@ -43,15 +44,17 @@ const SPECIALTIES = [
 ];
 
 // Pure Leaflet Map Component (100% immune to react-leaflet _leaflet_events bugs)
-function PureDoctorMap({ doctors, selectedDoctor, onSelectDoctor, userCoords }: {
+function PureDoctorMap({ doctors, selectedDoctor, onSelectDoctor, userCoords, routeCoords }: {
   doctors: Doctor[];
   selectedDoctor: Doctor | null;
   onSelectDoctor: (doc: Doctor) => void;
   userCoords: { lat: number; lng: number } | null;
+  routeCoords: [number, number][] | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerGroupRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.Polyline | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -119,7 +122,20 @@ function PureDoctorMap({ doctors, selectedDoctor, onSelectDoctor, userCoords }: 
       }
     });
 
-  }, [doctors, selectedDoctor, userCoords, onSelectDoctor]);
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
+    }
+
+    if (routeCoords && routeCoords.length > 0) {
+      try {
+        const pline = L.polyline(routeCoords, { color: '#6366f1', weight: 5, opacity: 0.8 }).addTo(map);
+        routeLayerRef.current = pline;
+        map.fitBounds(pline.getBounds(), { padding: [40, 40] });
+      } catch (e) {}
+    }
+
+  }, [doctors, selectedDoctor, userCoords, onSelectDoctor, routeCoords]);
 
   useEffect(() => {
     return () => {
@@ -129,6 +145,7 @@ function PureDoctorMap({ doctors, selectedDoctor, onSelectDoctor, userCoords }: 
         } catch (e) {}
         mapInstanceRef.current = null;
         markerGroupRef.current = null;
+        routeLayerRef.current = null;
       }
     };
   }, []);
@@ -145,6 +162,9 @@ export default function DoctorDirectoryPage() {
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
+  const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(null);
+  const [routeStats, setRouteStats] = useState<{ distance: string; duration: string } | null>(null);
+  const [routing, setRouting] = useState(false);
 
   const fetchDoctors = useCallback(async () => {
     setLoading(true);
@@ -176,6 +196,39 @@ export default function DoctorDirectoryPage() {
       },
       () => setLocationStatus('denied')
     );
+  };
+
+  const getDirections = async (doc: Doctor) => {
+    if (!userCoords) {
+      alert('Please enable location (click "Use My Location") to get directions.');
+      return;
+    }
+    if (!doc.location) return;
+
+    setRouting(true);
+    setRouteCoords(null);
+    setRouteStats(null);
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${userCoords.lng},${userCoords.lat};${doc.location.lng},${doc.location.lat}?overview=full`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        const coords = polyline.decode(route.geometry);
+        setRouteCoords(coords as [number, number][]);
+        
+        const distKm = (route.distance / 1000).toFixed(1);
+        const durMin = Math.ceil(route.duration / 60);
+        setRouteStats({ distance: `${distKm} km`, duration: `${durMin} min` });
+      } else {
+        alert('Could not calculate a route.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to get directions.');
+    } finally {
+      setRouting(false);
+    }
   };
 
   const renderStars = (rating: number) =>
@@ -261,6 +314,7 @@ export default function DoctorDirectoryPage() {
             selectedDoctor={selectedDoctor}
             onSelectDoctor={(doc) => setSelectedDoctor(doc)}
             userCoords={userCoords}
+            routeCoords={routeCoords}
           />
         </div>
 
@@ -287,11 +341,13 @@ export default function DoctorDirectoryPage() {
                 border: `1.5px solid ${selectedDoctor?._id === doc._id ? '#0891b2' : '#e2e8f0'}`,
                 borderRadius: '10px',
                 padding: '14px',
-                cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
             >
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <div 
+                style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer' }}
+                onClick={() => setSelectedDoctor(doc === selectedDoctor ? null : doc)}
+              >
                 <div style={{
                   width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
                   background: 'linear-gradient(135deg, #0891b2, #6366f1)',
@@ -344,15 +400,32 @@ export default function DoctorDirectoryPage() {
                   <div style={{ marginTop: '10px', fontSize: '11px', color: '#94a3b8' }}>
                     📍 {doc.location?.address}
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setBookingDoctor(doc); }}
-                    style={{
-                      width: '100%', padding: '10px', marginTop: '12px', background: 'linear-gradient(135deg, #0891b2, #6366f1)',
-                      color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer'
-                    }}
-                  >
-                    Book Appointment
-                  </button>
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setBookingDoctor(doc); }}
+                      style={{
+                        flex: 1, padding: '10px', background: 'linear-gradient(135deg, #0891b2, #6366f1)',
+                        color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer'
+                      }}
+                    >
+                      Book Appointment
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); getDirections(doc); }}
+                      disabled={routing}
+                      style={{
+                        padding: '10px 14px', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '8px',
+                        fontSize: '13px', fontWeight: 600, cursor: routing ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {routing ? '...' : '🗺️ Directions'}
+                    </button>
+                  </div>
+                  {routeStats && routeCoords && selectedDoctor?._id === doc._id && (
+                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, marginTop: '8px' }}>
+                      🚗 {routeStats.duration} ({routeStats.distance}) via driving
+                    </div>
+                  )}
                 </div>
               )}
             </div>

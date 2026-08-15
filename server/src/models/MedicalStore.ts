@@ -4,7 +4,7 @@ import mongoose, { Schema, type InferSchemaType } from 'mongoose';
 // (e.g., Google Places API for pharmacies, government blood bank registries)
 const medicalStoreSchema = new Schema({
   name: { type: String, required: true },
-  type: { type: String, enum: ['pharmacy', 'blood_bank'], required: true },
+  type: { type: String, enum: ['pharmacy', 'blood_bank', 'diagnostic_center'], required: true },
   location: {
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
@@ -13,10 +13,15 @@ const medicalStoreSchema = new Schema({
   phone: { type: String },
   openHours: { type: String },
   // For pharmacies: list of medicine names in stock (mock inventory)
-  // In production, this would be a real-time inventory API
   medicineInventory: [{ type: String }],
   // For blood banks: available blood groups (mock)
   bloodGroups: [{ type: String }],
+  // For diagnostic centers: available tests
+  diagnosticTests: [{
+    name: { type: String },
+    price: { type: Number },
+    turnaroundTime: { type: String }
+  }],
 }, { timestamps: true });
 
 export type IMedicalStore = InferSchemaType<typeof medicalStoreSchema> & { _id: mongoose.Types.ObjectId };

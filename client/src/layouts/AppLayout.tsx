@@ -88,6 +88,15 @@ export default function AppLayout() {
               <span>Medical Stores</span>
             </NavLink>
 
+            <NavLink 
+              to="/chat" 
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <span className="nav-icon">🤖</span>
+              <span>AI Health Chat</span>
+            </NavLink>
+
             {user?.role === 'doctor' && (
               <NavLink 
                 to="/doctor/dashboard" 
