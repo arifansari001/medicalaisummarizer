@@ -8,6 +8,7 @@ async function start() {
     // Connect to MongoDB using helper
     await connectDB();
     // Start server
+    const PORT = process.env.PORT || 5000;
     app.listen(env.PORT, () => {
       console.log(`🚀 Server running on http://localhost:${env.PORT}`);
     });
