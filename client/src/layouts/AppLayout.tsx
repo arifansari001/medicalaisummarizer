@@ -15,7 +15,7 @@ export default function AppLayout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
       {/* Mobile Overlay */}
       <div 
         className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -34,6 +34,15 @@ export default function AppLayout() {
         <nav className="sidebar-nav">
           <div className="sidebar-nav-section">
             <div className="sidebar-nav-section-title">Navigation</div>
+            <NavLink 
+              to="/home" 
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <span className="nav-icon">🏠</span>
+              <span>Home</span>
+            </NavLink>
+            
             <NavLink 
               to="/dashboard" 
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
@@ -86,6 +95,20 @@ export default function AppLayout() {
             >
               <span className="nav-icon">💊</span>
               <span>Medical Stores</span>
+            </NavLink>
+
+            <NavLink 
+              to="/pharmacy" 
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <span className="nav-icon">🛍️</span>
+              <span>Pharmacy Shop</span>
+              <span style={{
+                marginLeft: 'auto', background: '#FF8B6B', color: '#fff',
+                fontSize: '9px', fontWeight: 700, padding: '2px 6px',
+                borderRadius: '8px', letterSpacing: '0.3px',
+              }}>NEW</span>
             </NavLink>
 
             <NavLink 
@@ -149,10 +172,23 @@ export default function AppLayout() {
             >
               ☰
             </button>
-            <span className="topbar-title">MedSummary AI</span>
+            <span className="topbar-title" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>MedSummary AI</span>
           </div>
 
           <div className="topbar-right">
+            <button className="notification-btn" aria-label="Notifications">
+              🔔
+              <span className="notification-badge">3</span>
+            </button>
+
+            <button className="topbar-profile-chip" onClick={() => navigate('/profile')}>
+              <span className="topbar-avatar">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+              <span className="topbar-profile-text">
+                <strong>{user?.name || 'Patient'}</strong>
+                <small>Profile</small>
+              </span>
+            </button>
+
             <button 
               className="btn btn-primary btn-sm"
               onClick={() => navigate('/reports')}

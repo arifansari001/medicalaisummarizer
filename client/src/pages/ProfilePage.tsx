@@ -89,7 +89,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="profile-page animate-fade-in max-w-2xl mx-auto">
+    <div className="profile-page animate-fade-in">
       <div className="page-header">
         <div>
           <h1>Profile & Privacy</h1>
@@ -97,21 +97,21 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="profile-card card mb-8">
-        <div className="profile-avatar-section">
-          <div className="profile-avatar">
+      <div className="profile-section card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '9999px', background: 'linear-gradient(90deg, rgb(0, 130, 124) 0%, rgb(203, 255, 252) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '500', color: '#222222', boxShadow: '0 0 25px rgba(0, 130, 124, 0.4)' }}>
             {name.charAt(0).toUpperCase() || 'U'}
           </div>
-          <div className="profile-info">
-            <h2>{user?.name}</h2>
-            <p>{user?.email}</p>
-            <p className="text-xs text-tertiary mt-1">Member since {new Date(user?.createdAt || '').toLocaleDateString()}</p>
+          <div>
+            <h2 style={{ fontSize: '24px', color: '#ffffff', marginBottom: '8px' }}>{user?.name}</h2>
+            <p style={{ fontSize: '16px', color: '#bbc7c6' }}>{user?.email}</p>
+            <p style={{ fontSize: '12px', color: '#bbc7c6', marginTop: '8px' }}>Member since {new Date(user?.createdAt || '').toLocaleDateString()}</p>
           </div>
         </div>
 
         {/* Edit Profile Form */}
         <form onSubmit={handleUpdateProfile}>
-          <h3 className="card-title mb-4">Personal Information</h3>
+          <h3 className="profile-section-title">Personal Information</h3>
 
           {profileMsg && <div className="alert alert-success">{profileMsg}</div>}
           {profileErr && <div className="alert alert-error">{profileErr}</div>}
@@ -152,8 +152,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Security & Password */}
-      <div className="card mb-8">
-        <h3 className="card-title mb-4">Change Password</h3>
+      <div className="profile-section card">
+        <h3 className="profile-section-title">Change Password</h3>
 
         {passMsg && <div className="alert alert-success">{passMsg}</div>}
         {passErr && <div className="alert alert-error">{passErr}</div>}
@@ -197,19 +197,19 @@ export default function ProfilePage() {
       </div>
 
       {/* Data Export & Account Deletion */}
-      <div className="card mb-8">
-        <h3 className="card-title mb-2">Export Data</h3>
-        <p className="text-sm text-secondary mb-4">Download a full JSON copy of all your medical history events, reports, and AI analyses.</p>
+      <div className="profile-section card">
+        <h3 className="profile-section-title">Export Data</h3>
+        <p style={{ fontSize: '16px', color: '#bbc7c6', marginBottom: '20px' }}>Download a full JSON copy of all your medical history events, reports, and AI analyses.</p>
         <button className="btn btn-secondary btn-sm" onClick={handleExportData} disabled={isExporting}>
           {isExporting ? 'Preparing JSON Export...' : '📥 Export All Data (JSON)'}
         </button>
       </div>
 
-      <div className="danger-zone">
-        <h3>Danger Zone</h3>
-        <p>Permanently delete your account and remove all uploaded health records and AI analyses.</p>
-        <button className="btn btn-danger btn-sm" onClick={handleDeleteAccount}>
-          Delete Account & All Data
+      <div className="profile-section card">
+        <h3 className="profile-section-title">Danger Zone</h3>
+        <p style={{ fontSize: '16px', color: '#bbc7c6', marginBottom: '20px' }}>Permanently delete your account and remove all uploaded health records and AI analyses.</p>
+        <button className="profile-button-danger" onClick={handleDeleteAccount}>
+          🗑️ Delete Account & All Data
         </button>
       </div>
     </div>

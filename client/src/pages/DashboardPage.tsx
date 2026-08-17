@@ -5,12 +5,122 @@ import { useAuth } from '../context/AuthContext';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import type { Report, MedicalEvent } from '../types';
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  horizontalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface Tile {
+  id: string;
+  label: string;
+  desc: string;
+  icon: string;
+  path: string;
+  className: string;
+}
+
+function SortableTile({ tile, navigate }: { tile: Tile; navigate: ReturnType<typeof useNavigate> }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tile.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 1000 : 1,
+    touchAction: 'none' as const,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`feature-action-btn ${tile.className} hover-lift`}
+    >
+      <div 
+        {...attributes} 
+        {...listeners} 
+        style={{ cursor: 'grab', paddingRight: '12px', fontSize: '18px', opacity: 0.8, display: 'flex', alignItems: 'center', userSelect: 'none' }}
+        title="Drag to reorder"
+      >
+        ⋮⋮
+      </div>
+      <div 
+        onClick={() => navigate(tile.path)} 
+        style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, cursor: 'pointer' }}
+      >
+        <div className="btn-icon" style={{ fontSize: '40px', width: '72px', height: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '9999px', background: 'rgba(0, 130, 124, 0.15)', animation: 'floatIcon 3s ease-in-out infinite' }}>{tile.icon}</div>
+        <div className="btn-text">
+          <h3 style={{ fontSize: '24px', marginBottom: '8px', color: '#edfffe', fontWeight: '500' }}>{tile.label}</h3>
+          <p style={{ fontSize: '16px', color: '#bbc7c6' }}>{tile.desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [events, setEvents] = useState<MedicalEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Load ordered tiles from localStorage or use default order
+  const [tiles, setTiles] = useState<Tile[]>(() => {
+    const saved = localStorage.getItem('medsummary_dashboard_tiles');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse tiles order:', e);
+      }
+    }
+    return [
+      { id: 'triage', label: 'AI Triage & Doctors', desc: 'Check symptoms & find specialists', icon: '🤖', path: '/doctors', className: 'triage-btn' },
+      { id: 'stores', label: 'Medicines & Blood', desc: 'Find nearby pharmacies & banks', icon: '💊', path: '/stores', className: 'store-btn' },
+      { id: 'timeline', label: 'Health Timeline', desc: 'View your AI health journey', icon: '📈', path: '/timeline', className: 'timeline-btn' },
+    ];
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setTiles((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('medsummary_dashboard_tiles', JSON.stringify(reordered));
+        return reordered;
+      });
+    }
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -36,10 +146,9 @@ export default function DashboardPage() {
     <div className="dashboard-page animate-fade-in">
       <div className="page-header">
         <div>
-          <h1>Welcome back, {user?.name || 'User'} 👋</h1>
+          <h1>Welcome back, {user?.name || 'User'}</h1>
           <p className="card-subtitle">Personal Health Record & AI Report Overview</p>
         </div>
-
         <div className="page-header-actions">
           <button className="btn btn-primary" onClick={() => navigate('/reports')}>
             + Upload Medical Report
@@ -55,7 +164,7 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon reports">📄</div>
+          <div className="stat-icon">📄</div>
           <div className="stat-content">
             <h3>{isLoading ? '...' : reports.length}</h3>
             <p>Uploaded Reports</p>
@@ -63,7 +172,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon events">📋</div>
+          <div className="stat-icon">📋</div>
           <div className="stat-content">
             <h3>{isLoading ? '...' : events.length}</h3>
             <p>Medical History Events</p>
@@ -71,7 +180,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon analyses">🤖</div>
+          <div className="stat-icon">🤖</div>
           <div className="stat-content">
             <h3>{isLoading ? '...' : completedAnalysesCount}</h3>
             <p>AI Analyzed Summaries</p>
@@ -79,35 +188,28 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Feature Navigation Actions */}
-      <div className="feature-actions-grid">
-        <button className="feature-action-btn triage-btn" onClick={() => navigate('/doctors')}>
-          <div className="btn-icon">🤖</div>
-          <div className="btn-text">
-            <h3>AI Triage & Doctors</h3>
-            <p>Check symptoms & find specialists</p>
+      {/* Feature Navigation Actions (Draggable and Reorderable) */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={tiles.map(t => t.id)}
+          strategy={horizontalListSortingStrategy}
+        >
+          <div className="feature-actions-grid">
+            {tiles.map((tile) => (
+              <SortableTile key={tile.id} tile={tile} navigate={navigate} />
+            ))}
           </div>
-        </button>
-        <button className="feature-action-btn store-btn" onClick={() => navigate('/stores')}>
-          <div className="btn-icon">💊</div>
-          <div className="btn-text">
-            <h3>Medicines & Blood</h3>
-            <p>Find nearby pharmacies & banks</p>
-          </div>
-        </button>
-        <button className="feature-action-btn timeline-btn" onClick={() => navigate('/timeline')}>
-          <div className="btn-icon">📈</div>
-          <div className="btn-text">
-            <h3>Health Timeline</h3>
-            <p>View your AI health journey</p>
-          </div>
-        </button>
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 mt-4">
+      <div className="dashboard-columns-grid">
         {/* Recent Reports */}
-        <div className="card">
+        <div className="card card-heartbeat-bg">
           <div className="card-header">
             <div>
               <h2 className="card-title">Recent Reports</h2>
@@ -152,7 +254,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Events */}
-        <div className="card">
+        <div className="card card-heartbeat-bg">
           <div className="card-header">
             <div>
               <h2 className="card-title">Medical History</h2>

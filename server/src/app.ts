@@ -15,6 +15,10 @@ import doctorsRoutes from './routes/doctors.routes.js';
 import storesRoutes from './routes/stores.routes.js';
 import appointmentRoutes from './routes/appointment.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import productRoutes from './routes/product.routes.js';
+import cartRoutes from './routes/cart.routes.js';
+import orderRoutes from './routes/order.routes.js';
+import testBookingRoutes from './routes/testBooking.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +52,10 @@ app.use('/api/doctors', doctorsRoutes);
 app.use('/api/stores', storesRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/test-bookings', testBookingRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

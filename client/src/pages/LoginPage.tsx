@@ -25,7 +25,7 @@ export default function LoginPage() {
       if (loggedUser.role === 'doctor') {
         navigate('/doctor/dashboard');
       } else {
-        navigate('/dashboard');
+        navigate('/welcome');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please verify credentials.');
@@ -44,147 +44,334 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <div className="auth-logo">
-            <span className="logo-icon">🏥</span>
-            <h1>MedSummary AI</h1>
+    <>
+      <style>
+        {`
+          .login-layout {
+            display: flex;
+            min-height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            flex-direction: column;
+          }
+          .login-left {
+            background-color: #0A1628;
+            position: relative;
+            overflow: hidden;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+          }
+          .login-right {
+            background-color: #FFFFFF;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+          }
+          
+          @media (min-width: 768px) {
+            .login-layout {
+              flex-direction: row;
+            }
+            .login-left {
+              width: 45%;
+              padding: 60px;
+              align-items: flex-start;
+              text-align: left;
+            }
+            .login-right {
+              width: 55%;
+              padding: 60px;
+            }
+          }
+
+          .gradient-orb {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(10,22,40,0) 70%);
+            top: -100px;
+            right: -100px;
+            pointer-events: none;
+          }
+
+          .trust-list {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+          @media (max-width: 767px) {
+            .trust-list {
+              display: none;
+            }
+            .gradient-orb {
+              display: none;
+            }
+            .login-left {
+              padding: 30px 20px;
+            }
+          }
+
+          .form-card {
+            width: 100%;
+            max-width: 400px;
+          }
+
+          .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: #0F172A;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+          }
+          .input-field:focus {
+            outline: none;
+            border-color: #3B82F6;
+          }
+
+          .role-toggle {
+            display: flex;
+            background: #F1F5F9;
+            border-radius: 100px;
+            padding: 4px;
+            margin-bottom: 32px;
+          }
+          .role-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 100px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: #64748B;
+          }
+          .role-btn.active {
+            background: #0A1628;
+            color: #FFFFFF;
+          }
+        `}
+      </style>
+      <div className="login-layout">
+        {/* Left Panel */}
+        <div className="login-left">
+          <div className="gradient-orb"></div>
+          
+          <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '24px' }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM16 13H13V16C13 16.55 12.55 17 12 17C11.45 17 11 16.55 11 16V13H8C7.45 13 7 12.55 7 12C7 11.45 7.45 11 8 11H11V8C11 7.45 11.45 7 12 7C12.55 7 13 7.45 13 8V11H16C16.55 11 17 11.45 17 12C17 12.55 16.55 13 16 13Z" fill="#3B82F6"/>
+              </svg>
+              <h1 style={{ fontFamily: "'Outfit', sans-serif", color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: '0 0 12px 0' }}>
+                MedSummary AI
+              </h1>
+              <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '18px', margin: 0, lineHeight: 1.5 }}>
+                Your health journey, intelligently organized.
+              </p>
+            </div>
+
+            <div className="trust-list">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#FFFFFF' }}>
+                <span>🔒</span>
+                <span style={{ fontSize: '15px' }}>Bank-grade encryption</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#FFFFFF' }}>
+                <span>🤖</span>
+                <span style={{ fontSize: '15px' }}>AI-powered insights</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#FFFFFF' }}>
+                <span>👨‍⚕️</span>
+                <span style={{ fontSize: '15px' }}>Trusted by professionals</span>
+              </div>
+            </div>
           </div>
-          <p className="auth-subtitle">Sign in to your medical portal</p>
         </div>
 
-        {/* Role Selector Tabs */}
-        <div style={{
-          display: 'flex', borderRadius: '10px', background: '#f1f5f9',
-          padding: '4px', marginBottom: '20px'
-        }}>
-          <button
-            type="button"
-            onClick={() => setRoleTab('patient')}
-            style={{
-              flex: 1, padding: '10px', border: 'none', borderRadius: '8px',
-              fontWeight: 600, fontSize: '14px', cursor: 'pointer',
-              background: roleTab === 'patient' ? '#fff' : 'transparent',
-              color: roleTab === 'patient' ? '#0891b2' : '#64748b',
-              boxShadow: roleTab === 'patient' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            👤 Patient Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setRoleTab('doctor')}
-            style={{
-              flex: 1, padding: '10px', border: 'none', borderRadius: '8px',
-              fontWeight: 600, fontSize: '14px', cursor: 'pointer',
-              background: roleTab === 'doctor' ? '#fff' : 'transparent',
-              color: roleTab === 'doctor' ? '#6366f1' : '#64748b',
-              boxShadow: roleTab === 'doctor' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            👨‍⚕️ Doctor Login
-          </button>
-        </div>
+        {/* Right Panel */}
+        <div className="login-right">
+          <div className="form-card">
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", color: '#0F172A', fontSize: '28px', fontWeight: 700, margin: '0 0 8px 0' }}>
+              Welcome back
+            </h2>
+            <p style={{ color: '#64748B', margin: '0 0 32px 0', fontSize: '16px' }}>
+              Sign in to continue to your health portal
+            </p>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {error && <div className="alert alert-error">{error}</div>}
-
-          <div className="form-group">
-            <label htmlFor="email">{roleTab === 'doctor' ? 'Doctor Email' : 'Patient Email'}</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder={roleTab === 'doctor' ? 'doctor@hospital.com' : 'patient@example.com'}
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+            <div className="role-toggle">
               <button
                 type="button"
-                onClick={() => { setShowForgotModal(true); setResetEmail(email); }}
-                style={{ background: 'none', border: 'none', color: '#0891b2', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
+                className={`role-btn ${roleTab === 'patient' ? 'active' : ''}`}
+                onClick={() => setRoleTab('patient')}
               >
-                Forgot Password?
+                Patient
+              </button>
+              <button
+                type="button"
+                className={`role-btn ${roleTab === 'doctor' ? 'active' : ''}`}
+                onClick={() => setRoleTab('doctor')}
+              >
+                Doctor
               </button>
             </div>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              style={{ marginTop: '6px' }}
-            />
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {error && (
+                <div style={{ padding: '12px', background: '#FEF2F2', color: '#DC2626', borderRadius: '8px', fontSize: '14px' }}>
+                  {error}
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="email" style={{ display: 'block', marginBottom: '8px', color: '#334155', fontSize: '14px', fontWeight: 500 }}>
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className="input-field"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={roleTab === 'doctor' ? 'doctor@hospital.com' : 'patient@example.com'}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label htmlFor="password" style={{ color: '#334155', fontSize: '14px', fontWeight: 500 }}>
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setShowForgotModal(true); setResetEmail(email); }}
+                    style={{ background: 'none', border: 'none', color: '#3B82F6', fontSize: '13px', cursor: 'pointer', padding: 0 }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  className="input-field"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  borderRadius: '14px',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  background: roleTab === 'doctor' 
+                    ? 'linear-gradient(135deg, #3B82F6, #2563EB)' 
+                    : 'linear-gradient(135deg, #0A1628, #1B2A4A)',
+                  marginTop: '8px',
+                  transition: 'opacity 0.2s'
+                }}
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#64748B' }}>
+              Don't have an account?{' '}
+              <Link to="/register" style={{ color: '#3B82F6', textDecoration: 'none', fontWeight: 600 }}>
+                Create one
+              </Link>
+            </div>
           </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary btn-full"
-            disabled={loading}
-            style={{
-              background: roleTab === 'doctor' ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : undefined
-            }}
-          >
-            {loading ? 'Signing in...' : roleTab === 'doctor' ? 'Sign In as Doctor' : 'Sign In as Patient'}
-          </button>
-        </form>
-
-        <p className="auth-footer" style={{ marginTop: '20px' }}>
-          Don't have an account? <Link to="/register">Create one as {roleTab}</Link>
-        </p>
+        </div>
       </div>
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="modal-overlay" onClick={() => setShowForgotModal(false)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '24px', borderRadius: '12px', background: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Reset Password</h3>
-              <button onClick={() => setShowForgotModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', borderRadius: '16px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '16px' }}>
+              <h3 className="modal-title" style={{ fontFamily: "'Outfit', sans-serif", margin: 0, fontSize: '20px', color: '#0F172A' }}>Reset Password</h3>
+              <button className="modal-close-btn" onClick={() => setShowForgotModal(false)} style={{ color: '#64748B' }}>✕</button>
             </div>
 
-            {resetMessage ? (
-              <div>
-                <div style={{ background: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
-                  {resetMessage}
+            <div className="modal-body" style={{ paddingTop: '20px' }}>
+              {resetMessage ? (
+                <div>
+                  <div style={{ padding: '16px', background: '#F0FDF4', color: '#166534', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
+                    {resetMessage}
+                  </div>
+                  <button 
+                    onClick={() => { setShowForgotModal(false); setResetMessage(''); }}
+                    style={{ width: '100%', padding: '12px', background: '#F1F5F9', color: '#0F172A', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Back to Sign In
+                  </button>
                 </div>
-                <button className="btn btn-primary btn-full" onClick={() => { setShowForgotModal(false); setResetMessage(''); }}>
-                  Back to Sign In
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit}>
-                <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
-                  Enter your email address and we'll send you a password reset link.
-                </p>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Email Address</label>
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={e => setResetEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn-primary btn-full" disabled={resetLoading}>
-                  {resetLoading ? 'Sending link...' : 'Send Reset Link'}
-                </button>
-              </form>
-            )}
+              ) : (
+                <form onSubmit={handleForgotSubmit}>
+                  <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '20px', lineHeight: 1.5 }}>
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#334155', fontSize: '14px', fontWeight: 500 }}>
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      className="input-field"
+                      value={resetEmail}
+                      onChange={e => setResetEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={resetLoading}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      background: '#3B82F6',
+                      fontWeight: 600,
+                      cursor: resetLoading ? 'not-allowed' : 'pointer',
+                      opacity: resetLoading ? 0.7 : 1
+                    }}
+                  >
+                    {resetLoading ? 'Sending link...' : 'Send Reset Link'}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

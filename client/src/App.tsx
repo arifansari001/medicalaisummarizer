@@ -19,6 +19,9 @@ import SharedReportView from './components/SharedReportView';
 import DoctorDirectoryPage from './pages/DoctorDirectoryPage';
 import MedicalStorePage from './pages/MedicalStorePage';
 import ChatPage from './pages/ChatPage';
+import HomePage from './pages/HomePage';
+import PharmacyShopPage from './pages/PharmacyShopPage';
+import WelcomePage from './pages/WelcomePage';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -32,9 +35,11 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/shared/:token" element={<SharedReportView />} />
+          <Route path="/welcome" element={<ProtectedRoute><WelcomePage /></ProtectedRoute>} />
 
           {/* Protected Authenticated Routes */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/home" element={<HomePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/reports/:id" element={<ReportDetailPage />} />
@@ -45,13 +50,14 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/doctors" element={<DoctorDirectoryPage />} />
             <Route path="/stores" element={<MedicalStorePage />} />
+            <Route path="/pharmacy" element={<PharmacyShopPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
             <Route path="/doctor/share/:id" element={<DoctorSharedRecordPage />} />
           </Route>
 
           {/* Redirects & 404 */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/welcome" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>

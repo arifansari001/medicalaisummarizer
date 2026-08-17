@@ -220,27 +220,23 @@ export default function MedicalStorePage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="page-shell">
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-          💊 Medical Stores & Blood Banks
-        </h1>
-        <p style={{ color: '#64748b', marginTop: '4px', fontSize: '14px' }}>
+        <h1 className="page-title">💊 Medical Stores & Blood Banks</h1>
+        <p className="page-subtitle">
           Search for medicines, pharmacies, and blood banks near you.{' '}
-          <span style={{ color: '#f59e0b', fontWeight: 600 }}>All data is seeded mock data for demonstration.</span>
+          <span style={{ color: 'var(--color-lavender-phosphor)', fontWeight: 600 }}>All data is seeded mock data for demonstration.</span>
         </p>
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+      <div className="dark-controls">
         {/* Type filter */}
-        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1.5px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1.5px solid rgba(139, 199, 198, 0.18)', background: 'rgba(0, 55, 52, 0.18)' }}>
           {(['all', 'pharmacy', 'blood_bank', 'diagnostic_center'] as const).map((t) => (
-            <button key={t} onClick={() => setType(t)} style={{
-              padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-              background: type === t ? '#0891b2' : '#f8fafc',
-              color: type === t ? 'white' : '#64748b',
+            <button key={t} onClick={() => setType(t)} className={type === t ? 'dark-filter active' : 'dark-filter'} style={{
+              border: 'none',
             }}>
               {t === 'all' ? '🏪 All' : t === 'pharmacy' ? '💊 Pharmacies' : t === 'blood_bank' ? '🩸 Blood Banks' : '🔬 Diagnostics'}
             </button>
@@ -250,13 +246,11 @@ export default function MedicalStorePage() {
         {/* Search */}
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '240px' }}>
           <input
+            className="dark-input"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             placeholder={type === 'blood_bank' ? 'Search blood group (e.g. O+)...' : type === 'diagnostic_center' ? 'Search test name (e.g. MRI)...' : 'Search medicine name...'}
-            style={{
-              flex: 1, padding: '9px 14px', borderRadius: '8px',
-              border: '1.5px solid #e2e8f0', fontSize: '14px'
-            }}
+            style={{ flex: 1 }}
           />
           <button type="submit" style={{
             padding: '9px 16px', background: 'linear-gradient(135deg, #0891b2, #6366f1)',
@@ -282,12 +276,12 @@ export default function MedicalStorePage() {
           <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>✅ Sorted by distance</span>
         )}
 
-        <span style={{ fontSize: '13px', color: '#64748b', marginLeft: 'auto' }}>
+        <span style={{ fontSize: '13px', color: 'var(--color-silver-mist)', marginLeft: 'auto' }}>
           {stores.length} result{stores.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#64748b' }}>
+      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--color-silver-mist)' }}>
         <span>🟢 Pharmacy</span>
         <span>🔴 Blood Bank</span>
         <span>🟣 Diagnostic Center</span>
@@ -297,7 +291,7 @@ export default function MedicalStorePage() {
       {/* Split layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', minHeight: '520px' }}>
         {/* Map */}
-        <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+        <div className="map-panel">
           <PureStoreMap
             stores={stores}
             selectedStore={selectedStore}

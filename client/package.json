@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@mapbox/polyline": "^1.2.1",
     "@types/leaflet": "^1.9.22",
     "@types/mapbox__polyline": "^1.0.5",

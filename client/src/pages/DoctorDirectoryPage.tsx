@@ -237,27 +237,23 @@ export default function DoctorDirectoryPage() {
     ));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="page-shell">
       {/* Page Header */}
       <div>
-        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-          👨‍⚕️ Doctor Directory
-        </h1>
-        <p style={{ color: '#64748b', marginTop: '4px', fontSize: '14px' }}>
+        <h1 className="page-title">👨‍⚕️ Doctor Directory</h1>
+        <p className="page-subtitle">
           Find qualified specialists near you. Data is seeded mock data for demonstration.
         </p>
       </div>
 
       {/* Controls Row */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+      <div className="dark-controls">
         {/* Specialty Filter */}
         <select
+          className="dark-select"
           value={specialty}
           onChange={(e) => setSpecialty(e.target.value)}
-          style={{
-            padding: '9px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
-            fontSize: '14px', background: '#f8fafc', cursor: 'pointer', minWidth: '180px'
-          }}
+          style={{ minWidth: '180px' }}
         >
           {SPECIALTIES.map((s) => (
             <option key={s} value={s}>{s === 'all' ? 'All Specialties' : s}</option>
@@ -266,12 +262,9 @@ export default function DoctorDirectoryPage() {
 
         {/* Sort */}
         <select
+          className="dark-select"
           value={sort}
           onChange={(e) => setSort(e.target.value as 'rating' | 'distance')}
-          style={{
-            padding: '9px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
-            fontSize: '14px', background: '#f8fafc', cursor: 'pointer'
-          }}
         >
           <option value="rating">Sort: Best Rated</option>
           <option value="distance" disabled={!userCoords}>Sort: Nearest First {!userCoords ? '(share location)' : ''}</option>
@@ -300,7 +293,7 @@ export default function DoctorDirectoryPage() {
           </span>
         )}
 
-        <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#64748b' }}>
+        <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--color-silver-mist)' }}>
           {doctors.length} doctor{doctors.length !== 1 ? 's' : ''} found
         </span>
       </div>
@@ -308,7 +301,7 @@ export default function DoctorDirectoryPage() {
       {/* Split layout: Map + List */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', minHeight: '520px' }}>
         {/* Map */}
-        <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', position: 'relative', background: '#f8fafc' }}>
+        <div className="map-panel" style={{ position: 'relative' }}>
           <PureDoctorMap
             doctors={doctors}
             selectedDoctor={selectedDoctor}
