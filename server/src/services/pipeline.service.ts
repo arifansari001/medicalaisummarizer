@@ -87,7 +87,7 @@ export async function processReportPipeline(reportId: string): Promise<void> {
         diagnoses: analysisOutput.diagnoses || [],
         preventionTips: analysisOutput.preventionTips || [],
         dietaryAdvice: analysisOutput.dietaryAdvice || { eat: [], avoid: [] },
-        modelUsed: 'llama-3.3-70b-versatile',
+        modelUsed: 'openai/gpt-oss-120b',
       },
       { upsert: true, new: true }
     );

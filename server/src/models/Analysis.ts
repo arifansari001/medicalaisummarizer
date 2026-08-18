@@ -37,7 +37,7 @@ const analysisSchema = new Schema({
     generalOnly: { type: Boolean, default: false },
     disclaimer: { type: String, default: '' }
   },
-  modelUsed: { type: String, default: 'llama-3.3-70b-versatile' },
+  modelUsed: { type: String, default: 'openai/gpt-oss-120b' },
 }, {
   timestamps: true,
 });
