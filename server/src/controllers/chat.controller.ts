@@ -136,7 +136,7 @@ queryType guidelines:
 - "none": Greetings, unrelated questions`;
 
     const completion = await groq.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: systemPrompt },
         ...conversationHistory,

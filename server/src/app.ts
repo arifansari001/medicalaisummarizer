@@ -26,10 +26,20 @@ const app = express();
 
 // CORS & Parsing Middleware
 app.use(cors({
-  origin: [
-    'https://medicalaisummarizer.vercel.app',
-    'http://localhost:5173'
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    // Allow all Vercel deployments + local dev
+    if (
+      origin.endsWith('.vercel.app') ||
+      origin === 'https://medicalaisummarizer.vercel.app' ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:')
+    ) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -41,6 +51,23 @@ app.use('/uploads', express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)))
 // Health Check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Admin: Force re-seed (protected by ADMIN_SECRET header)
+app.post('/api/admin/reseed', async (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  const expectedSecret = process.env.ADMIN_SECRET || 'medsummary-admin-seed-2025';
+  if (secret !== expectedSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { autoSeedAll } = await import('./scripts/seedAll.js');
+    await autoSeedAll(true); // force = true
+    res.json({ success: true, message: 'Database re-seeded successfully.' });
+  } catch (err: any) {
+    console.error('Reseed error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // API Routes
