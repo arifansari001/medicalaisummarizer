@@ -1,11 +1,20 @@
 import nodemailer from 'nodemailer';
 
-// Create Gmail SMTP transporter using environment variables
 function createTransporter() {
+  const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+  if (host.includes('gmail.com')) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    host,
     port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false,
+    secure: process.env.EMAIL_SECURE === 'true' || false,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -106,6 +115,11 @@ export async function sendShareEmail({
     to: toEmail,
     subject: `📋 ${patientName} has shared a medical report with you`,
     html: htmlBody,
+    priority: 'high',
+    headers: {
+      'X-Priority': '1',
+      'Importance': 'high',
+    }
   });
 
   console.log(`✅ Share email sent via Gmail SMTP to ${toEmail} | Message ID: ${info.messageId}`);
@@ -181,6 +195,11 @@ export async function sendAppointmentEmail({
     to: toEmail,
     subject: `📅 Appointment confirmed with Dr. ${doctorName}`,
     html: htmlBody,
+    priority: 'high',
+    headers: {
+      'X-Priority': '1',
+      'Importance': 'high',
+    }
   });
 
   console.log(`✅ Appointment email sent via Gmail SMTP to ${toEmail} | Message ID: ${info.messageId}`);

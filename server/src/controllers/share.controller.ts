@@ -60,18 +60,24 @@ export async function createShare(req: AuthRequest, res: Response) {
   // Send email notification to the doctor with the share link
   const patient = await User.findById(patientId).select('name');
   const patientName = patient?.name || 'A patient';
-  const shareLink = `${process.env.APP_BASE_URL}/shared/${accessToken}`;
 
-  try {
-    await sendShareEmail({
-      toEmail: data.doctorEmail,
-      patientName,
-      shareLink,
-      expiresAt,
-    });
-  } catch (emailErr) {
+  // Build share link — prefer the explicitly set APP_BASE_URL if it's not a local dev URL
+  const configuredBase = process.env.APP_BASE_URL || '';
+  const isLocal = configuredBase.includes('localhost') || configuredBase.includes('127.0.0.1');
+  const appBase = (configuredBase && !isLocal)
+    ? configuredBase.replace(/\/$/, '')
+    : (process.env.FRONTEND_URL || 'https://medicalaisummarizer.vercel.app');
+  const shareLink = `${appBase}/shared/${accessToken}`;
+
+  // Send email in the background to prevent blocking the HTTP response
+  sendShareEmail({
+    toEmail: data.doctorEmail,
+    patientName,
+    shareLink,
+    expiresAt,
+  }).catch((emailErr) => {
     console.error('⚠️ Email sending failed (share still created):', emailErr);
-  }
+  });
 
   res.status(201).json({ share });
 }
