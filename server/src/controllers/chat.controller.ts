@@ -1,6 +1,6 @@
 import { type Response } from 'express';
 import { type AuthRequest } from '../middleware/auth.middleware.js';
-import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '../config/env.js';
 import { User } from '../models/User.js';
 import { MedicalStore } from '../models/MedicalStore.js';
@@ -102,11 +102,23 @@ export const handleChatMessage = async (req: AuthRequest, res: Response) => {
     }
 
     // ── STEP 2: Build conversational prompt with safety rules baked in ──────────
-    const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+    const geminiApiKey = env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured in environment variables');
+    }
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 600,
+        responseMimeType: 'application/json',
+      }
+    });
 
     const conversationHistory = history.slice(-8).map(h => ({
-      role: (h.role === 'patient' ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: h.content,
+      role: (h.role === 'patient' ? 'user' : 'model') as 'user' | 'model',
+      parts: [{ text: h.content }],
     }));
 
     const systemPrompt = `You are MedSummary AI's health assistant. Your ONLY job is to provide general educational health information. You are NOT a doctor and must NEVER:
@@ -135,19 +147,16 @@ queryType guidelines:
 - "general": General health questions, symptom discussions, report explanations
 - "none": Greetings, unrelated questions`;
 
-    const completion = await groq.chat.completions.create({
-      model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory,
-        { role: 'user', content: fullMessage },
+    const chat = model.startChat({
+      history: [
+        { role: 'user', parts: [{ text: systemPrompt }] },
+        { role: 'model', parts: [{ text: 'Understood. I will strictly follow these rules and always output the required JSON format.' }] },
+        ...conversationHistory
       ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
-      max_tokens: 600,
     });
 
-    const responseText = completion.choices[0]?.message?.content;
+    const completion = await chat.sendMessage([{ text: fullMessage }]);
+    const responseText = completion.response.text();
     if (!responseText) throw new Error('Empty response from AI');
 
     let parsed: {

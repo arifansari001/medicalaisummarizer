@@ -1,4 +1,4 @@
-import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '../config/env.js';
 
 export interface AnalysisOutput {
@@ -89,12 +89,19 @@ All top-level fields are required. findings, testResults, medicalTerms, and doct
 `;
 
 export async function analyzeMedicalText(extractedText: string, fileType?: string): Promise<AnalysisOutput> {
-  const groqApiKey = env.GROQ_API_KEY;
-  if (!groqApiKey) {
-    throw new Error('GROQ_API_KEY is not configured in environment variables');
+  const geminiApiKey = env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in environment variables');
   }
 
-  const groq = new Groq({ apiKey: groqApiKey });
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.3,
+      responseMimeType: 'application/json',
+    }
+  });
 
   const isPrescription = fileType && (fileType.startsWith('image/'));
   
@@ -106,7 +113,11 @@ IMPORTANT - IMAGE-BASED DOCUMENT: This text was extracted via OCR from a photogr
 - Set reportType to "Doctor's Prescription" if this appears to be a prescription.
 ` : '';
 
+  const systemInstruction = 'You are a precise medical document parsing assistant. You understand lab reports, prescriptions, radiology reports, and all types of medical documents. You always respond with valid JSON only, matching the exact schema given.';
+
   const prompt = `
+${systemInstruction}
+
 You are an expert AI medical document parsing system. Analyze the following text extracted from a medical document.
 ${prescriptionExtra}
 INSTRUCTIONS:
@@ -131,22 +142,11 @@ ${extractedText}
 """
 `;
 
-  const completion = await groq.chat.completions.create({
-    model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are a precise medical document parsing assistant. You understand lab reports, prescriptions, radiology reports, and all types of medical documents. You always respond with valid JSON only, matching the exact schema given.',
-      },
-      { role: 'user', content: prompt },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.3,
-  });
-
-  const responseText = completion.choices[0]?.message?.content;
+  const result = await model.generateContent(prompt);
+  const responseText = result.response.text();
+  
   if (!responseText) {
-    throw new Error('Empty response from Groq API');
+    throw new Error('Empty response from Gemini API');
   }
 
   const parsedData = JSON.parse(responseText) as AnalysisOutput;
