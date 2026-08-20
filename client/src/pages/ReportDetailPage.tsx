@@ -5,14 +5,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import type { Report, Analysis } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [report, setReport] = useState<Report | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{
+    type: 'finding' | 'testResult';
+    index: number;
+    description: string;
+    originalValue?: string;
+    referenceRange?: string;
+    confidenceScore?: number;
+    boundingBox?: any;
+  } | null>(null);
+  const [correctionValue, setCorrectionValue] = useState('');
+  const [isSubmittingCorrection, setIsSubmittingCorrection] = useState(false);
 
   const fetchReport = async () => {
     try {
@@ -70,6 +83,26 @@ export default function ReportDetailPage() {
       navigate('/reports');
     } catch (err) {
       alert('Failed to delete report.');
+    }
+  };
+
+  const handleVerifyOrCorrect = async () => {
+    if (!selectedItem) return;
+    setIsSubmittingCorrection(true);
+    try {
+      const res = await api.post(`/reports/${id}/analysis/correct`, {
+        type: selectedItem.type,
+        index: selectedItem.index,
+        correctedValue: correctionValue,
+      });
+      setAnalysis(res.data.analysis);
+      setSelectedItem(null);
+      setCorrectionValue('');
+      alert('Clinician verification saved successfully.');
+    } catch (err) {
+      alert('Failed to save clinician verification.');
+    } finally {
+      setIsSubmittingCorrection(false);
     }
   };
 
@@ -170,13 +203,60 @@ export default function ReportDetailPage() {
             {isRetrying ? 'Retrying...' : 'Retry Analysis'}
           </button>
         </div>
-      )}
-
-      {report.processingStatus === 'completed' && analysis && (
+      )}      {report.processingStatus === 'completed' && analysis && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
           
           {/* Left Column: AI Analysis */}
           <div className="analysis-container flex flex-col gap-6">
+            
+            {/* EVIDENCE AUDIT TRAIL POP PANEL */}
+            {selectedItem && (
+              <div className="card border-2 border-cyan-500 bg-cyan-50/20 p-5 animate-fade-in">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-cyan-800 flex items-center gap-1">
+                    🔍 Evidence-Linked Audit Trail
+                  </h3>
+                  <button className="text-xs text-secondary hover:text-primary font-semibold" onClick={() => setSelectedItem(null)}>✕ Close</button>
+                </div>
+                <div className="text-xs space-y-2 text-primary">
+                  <p><strong>AI Statement:</strong> “{selectedItem.description}”</p>
+                  {selectedItem.originalValue && <p><strong>Original Value:</strong> {selectedItem.originalValue}</p>}
+                  {selectedItem.referenceRange && <p><strong>Reference Range:</strong> {selectedItem.referenceRange}</p>}
+                  <p><strong>Confidence Score:</strong> {selectedItem.confidenceScore}% AI Confidence</p>
+                  {selectedItem.boundingBox && (
+                    <p className="bg-white p-2 rounded border font-mono">
+                      <strong>Bounding Box:</strong> Page {selectedItem.boundingBox.page} [x: {selectedItem.boundingBox.x}, y: {selectedItem.boundingBox.y}, w: {selectedItem.boundingBox.width}, h: {selectedItem.boundingBox.height}]
+                    </p>
+                  )}
+                  <p className="text-orange-600 bg-orange-50 p-2 rounded border border-orange-200">
+                    ⚠️ <strong>Disclaimer:</strong> This is an explanation, not a diagnosis.
+                  </p>
+                </div>
+
+                {user?.role === 'doctor' && (
+                  <div className="mt-4 pt-3 border-t border-cyan-200">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">🧑‍⚕️ Clinician Correction</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        className="flex-1 border rounded p-1.5 text-xs"
+                        value={correctionValue}
+                        onChange={(e) => setCorrectionValue(e.target.value)}
+                        placeholder="Enter the correct medical value or description..."
+                      />
+                      <button 
+                        className="btn btn-primary btn-sm py-1.5"
+                        onClick={handleVerifyOrCorrect}
+                        disabled={isSubmittingCorrection}
+                      >
+                        {isSubmittingCorrection ? 'Saving...' : 'Verify & Correct'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="card">
               <h2 className="analysis-section-title">
                 💡 Plain-Language Summary
@@ -222,6 +302,42 @@ export default function ReportDetailPage() {
               </div>
             )}
 
+            {/* CARE PATHWAY NAVIGATION (D) */}
+            {analysis.carePathwaySuggestion && (
+              <div className="card border-l-4 border-purple-500 bg-purple-50/10">
+                <h2 className="analysis-section-title text-purple-600">
+                  🗺️ Recommended Care Pathway
+                </h2>
+                <p className="text-xs text-secondary mb-3">
+                  The following is a care-navigation suggestion with uncertainty, not a definitive clinical conclusion.
+                </p>
+                <div className="flex flex-col gap-3">
+                  {analysis.carePathwaySuggestion.recommendedProviderTypes && analysis.carePathwaySuggestion.recommendedProviderTypes.length > 0 && (
+                    <div>
+                      <span className="text-xs font-bold uppercase text-purple-600 block">Recommended Specialists to Discuss With:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {analysis.carePathwaySuggestion.recommendedProviderTypes.map((provider, index) => (
+                          <span key={index} className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
+                            {provider}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {analysis.carePathwaySuggestion.nextSteps && analysis.carePathwaySuggestion.nextSteps.length > 0 && (
+                    <div>
+                      <span className="text-xs font-bold uppercase text-purple-600 block">Suggested Preparation & Next Steps:</span>
+                      <ul className="list-disc pl-5 mt-1 space-y-1 text-xs text-primary">
+                        {analysis.carePathwaySuggestion.nextSteps.map((step, index) => (
+                          <li key={index}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {analysis.preventionTips && analysis.preventionTips.length > 0 && (
               <div className="card border-l-4 border-green-500">
                 <h2 className="analysis-section-title text-green-600">
@@ -254,15 +370,39 @@ export default function ReportDetailPage() {
                     <a 
                       key={idx} 
                       href="#document-viewer"
-                      onClick={(e) => { e.preventDefault(); scrollToDocument(); }}
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        scrollToDocument(); 
+                        setSelectedItem({
+                          type: 'finding',
+                          index: idx,
+                          description: finding.description || finding,
+                          originalValue: finding.description || finding,
+                          confidenceScore: finding.boundingBox?.confidenceScore || 92,
+                          boundingBox: finding.boundingBox
+                        });
+                        setCorrectionValue(finding.correctedValue || finding.description || finding);
+                      }}
                       className="finding-item block hover:bg-blue-50 cursor-pointer transition-colors p-3 rounded-md border border-transparent hover:border-blue-100"
                     >
                       <div className="flex justify-between items-start gap-2">
                         <span className="text-gray-800">
-                          {typeof finding === 'string' ? finding : finding.description}
+                          {finding.verifiedByDoctor ? (
+                            <>
+                              <span className="line-through text-gray-400 mr-2">{finding.description}</span>
+                              <span className="text-green-700 font-medium">{finding.correctedValue}</span>
+                            </>
+                          ) : (
+                            typeof finding === 'string' ? finding : finding.description
+                          )}
+                          {finding.verifiedByDoctor && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-semibold ml-2">
+                              ✓ Clinician Verified
+                            </span>
+                          )}
                         </span>
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ opacity: 0.8 }}>
-                          View ↗
+                          Audit Evidence ↗
                         </span>
                       </div>
                       {typeof finding === 'object' && finding.sourcePage != null && (
@@ -292,9 +432,34 @@ export default function ReportDetailPage() {
                     </thead>
                     <tbody>
                       {analysis.testResults.map((test, idx) => (
-                        <tr key={idx}>
+                        <tr 
+                          key={idx} 
+                          className="hover:bg-blue-50 cursor-pointer"
+                          onClick={() => {
+                            setSelectedItem({
+                              type: 'testResult',
+                              index: idx,
+                              description: test.name,
+                              originalValue: test.value,
+                              referenceRange: test.referenceRange,
+                              confidenceScore: test.boundingBox?.confidenceScore || 96,
+                              boundingBox: test.boundingBox
+                            });
+                            setCorrectionValue(test.correctedValue || test.value);
+                          }}
+                        >
                           <td className="font-semibold">{test.name}</td>
-                          <td>{test.value}</td>
+                          <td>
+                            {test.verifiedByDoctor ? (
+                              <>
+                                <span className="line-through text-gray-400 mr-2">{test.value}</span>
+                                <span className="text-green-700 font-medium">{test.correctedValue}</span>
+                                <span className="block text-[10px] text-green-600 font-semibold">✓ Clinician Verified</span>
+                              </>
+                            ) : (
+                              test.value
+                            )}
+                          </td>
                           <td>{test.unit || '-'}</td>
                           <td>{test.referenceRange || 'Not provided'}</td>
                           <td>

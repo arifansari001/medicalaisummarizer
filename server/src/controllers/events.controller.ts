@@ -94,3 +94,39 @@ export async function deleteEvent(req: AuthRequest, res: Response) {
 
   res.json({ message: 'Medical event deleted successfully' });
 }
+
+export async function getTimeline(req: AuthRequest, res: Response) {
+  // Aggregate lab results from all events to track trends
+  const events = await MedicalEvent.find({ userId: req.userId })
+    .sort({ date: -1 })
+    .populate('attachedReports')
+    .populate('prescriptions')
+    .lean();
+
+  const labTrends: Record<string, any[]> = {};
+  
+  events.forEach(event => {
+    if (event.labResults) {
+      event.labResults.forEach(lab => {
+        if (!lab.testName) return;
+        const testNameStr = String(lab.testName);
+        if (!labTrends[testNameStr]) {
+          labTrends[testNameStr] = [];
+        }
+        labTrends[testNameStr].push({
+          value: lab.value,
+          date: lab.date || event.date,
+          unit: lab.unit,
+          referenceRange: lab.referenceRange
+        });
+      });
+    }
+  });
+
+  // Sort trend data points by date ascending
+  Object.keys(labTrends).forEach(testName => {
+    labTrends[testName].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  });
+
+  res.json({ events, labTrends });
+}

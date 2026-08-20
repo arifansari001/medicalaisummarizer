@@ -162,3 +162,30 @@ export async function getAnalysis(req: AuthRequest, res: Response) {
 
   res.json({ analysis });
 }
+
+export async function correctAnalysis(req: AuthRequest, res: Response) {
+  const { id } = req.params;
+  const { type, index, correctedValue } = req.body;
+
+  const analysis = await Analysis.findOne({ reportId: id });
+  if (!analysis) {
+    res.status(404).json({ error: 'Analysis not found' });
+    return;
+  }
+
+  if (type === 'finding') {
+    if (analysis.findings && analysis.findings[index]) {
+      analysis.findings[index].verifiedByDoctor = true;
+      analysis.findings[index].correctedValue = correctedValue;
+    }
+  } else if (type === 'testResult') {
+    if (analysis.testResults && analysis.testResults[index]) {
+      analysis.testResults[index].verifiedByDoctor = true;
+      analysis.testResults[index].correctedValue = correctedValue;
+    }
+  }
+
+  await analysis.save();
+  res.json({ message: 'Clinician verification saved', analysis });
+}
+

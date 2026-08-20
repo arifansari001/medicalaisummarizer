@@ -22,6 +22,16 @@ const medicalEventSchema = new Schema({
   status: { type: String, enum: EVENT_STATUSES, default: 'active' },
   notes: { type: String, trim: true },
   attachedReports: [{ type: Schema.Types.ObjectId, ref: 'Report' }],
+  prescriptions: [{ type: Schema.Types.ObjectId, ref: 'Report' }],
+  medications: [{ name: String, dosage: String, frequency: String, isCurrent: Boolean }],
+  labResults: [{
+    testName: String,
+    value: Number,
+    unit: String,
+    referenceRange: String,
+    date: Date,
+    specimenType: String
+  }],
 }, {
   timestamps: true,
 });

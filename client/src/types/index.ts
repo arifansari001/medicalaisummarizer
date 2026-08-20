@@ -97,6 +97,15 @@ export interface Report {
 }
 
 // Analysis types
+export interface BoundingBox {
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidenceScore: number;
+}
+
 export interface TestResult {
   name: string;
   value: string;
@@ -105,6 +114,9 @@ export interface TestResult {
   status: 'normal' | 'below_range' | 'above_range' | 'unknown';
   sourceDocumentId?: string;
   sourcePage?: number | null;
+  boundingBox?: BoundingBox | null;
+  verifiedByDoctor?: boolean;
+  correctedValue?: string;
 }
 
 export interface MedicalTerm {
@@ -116,6 +128,9 @@ export interface Finding {
   description: string;
   sourceDocumentId?: string;
   sourcePage?: number | null;
+  boundingBox?: BoundingBox | null;
+  verifiedByDoctor?: boolean;
+  correctedValue?: string;
 }
 
 export interface Analysis {
@@ -135,21 +150,35 @@ export interface Analysis {
     generalOnly: boolean;
     disclaimer: string;
   };
+  carePathwaySuggestion?: {
+    recommendedProviderTypes: string[];
+    nextSteps: string[];
+  };
   modelUsed: string;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface AccessLog {
+  accessedAt: string;
+  accessedByEmail?: string;
+  ipAddress?: string;
+}
+
 export interface ShareRecord {
   _id: string;
   patientId: string | User;
-  doctorEmail: string;
+  doctorEmail?: string;
   doctorId?: string | User | null;
   sharedEventIds: string[];
   sharedReportIds: string[];
+  sharedSummaryIds?: string[];
+  hiddenDiagnosisTags?: string[];
+  authType?: 'none' | 'otp' | 'login';
   accessToken: string;
   expiresAt: string;
   revokedAt?: string | null;
+  accessLogs?: AccessLog[];
   createdAt: string;
   updatedAt: string;
 }

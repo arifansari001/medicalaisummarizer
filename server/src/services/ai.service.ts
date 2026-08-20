@@ -7,6 +7,7 @@ export interface AnalysisOutput {
   findings: Array<{
     description: string;
     sourcePage?: number | null;
+    boundingBox?: { page: number, x: number, y: number, width: number, height: number, confidenceScore: number } | null;
   }>;
   testResults: Array<{
     name: string;
@@ -15,6 +16,7 @@ export interface AnalysisOutput {
     referenceRange: string;
     status: 'normal' | 'below_range' | 'above_range' | 'unknown';
     sourcePage?: number | null;
+    boundingBox?: { page: number, x: number, y: number, width: number, height: number, confidenceScore: number } | null;
   }>;
   medicalTerms: Array<{
     term: string;
@@ -38,6 +40,10 @@ export interface AnalysisOutput {
     generalOnly: boolean;
     disclaimer: string;
   };
+  carePathwaySuggestion?: {
+    recommendedProviderTypes: string[];
+    nextSteps: string[];
+  };
 }
 
 const SCHEMA_DESCRIPTION = `
@@ -49,7 +55,8 @@ Return ONLY a valid JSON object (no markdown, no code fences, no extra commentar
   "findings": [
     {
       "description": string, // key clinical finding or prescribed medication in plain language
-      "sourcePage": number | null
+      "sourcePage": number | null,
+      "boundingBox": { "page": number, "x": number, "y": number, "width": number, "height": number, "confidenceScore": number } | null
     }
   ],
   "testResults": [
@@ -59,7 +66,8 @@ Return ONLY a valid JSON object (no markdown, no code fences, no extra commentar
       "unit": string,
       "referenceRange": string,
       "status": "normal" | "below_range" | "above_range" | "unknown",
-      "sourcePage": number | null
+      "sourcePage": number | null,
+      "boundingBox": { "page": number, "x": number, "y": number, "width": number, "height": number, "confidenceScore": number } | null
     }
   ],
   "medicalTerms": [
@@ -81,7 +89,11 @@ Return ONLY a valid JSON object (no markdown, no code fences, no extra commentar
     "eat": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
     "avoid": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
     "generalOnly": boolean, // true if the condition is complex/high-risk (kidney, liver, cancer, heart, pregnancy) - keep tips broad in that case
-    "disclaimer": string // e.g. "This is general wellness guidance, not medical advice. Please consult your doctor or a registered dietitian before making dietary changes."
+    "disclaimer": string // MUST INCLUDE: "This is general wellness guidance, not medical advice. Please consult your doctor or a registered dietitian before making dietary changes."
+  },
+  "carePathwaySuggestion": {
+    "recommendedProviderTypes": string[], // e.g. ["Endocrinologist", "General Physician"]
+    "nextSteps": string[] // e.g. ["Consider discussing this with a qualified physician.", "Here is what the terminology generally means."]
   }
 }
 
@@ -128,11 +140,12 @@ INSTRUCTIONS:
 5. List key clinical findings using conservative, non-diagnostic wording.
 6. Translate technical medical terms, abbreviations, and Latin phrases into plain English.
 7. Provide 3-5 thoughtful questions the patient can ask their doctor.
-8. SOURCE TRACING: If the text contains page markers like "[Page X]", include the sourcePage integer for findings and test results. Otherwise set sourcePage to null.
-9. CRITICAL SAFETY DIRECTIVE: DO NOT diagnose disease, prescribe medication, suggest dosage, or advise stopping treatment. All explanations must be informational only.
+8. SOURCE TRACING: If the text contains page markers like "[Page X]", include the sourcePage integer for findings and test results. Otherwise set sourcePage to null. If you can infer bounding box coordinates (e.g. from OCR data if provided), include them. Otherwise set boundingBox to null.
+9. CRITICAL SAFETY DIRECTIVE: DO NOT diagnose disease, prescribe medication, suggest dosage, or advise stopping treatment. All explanations must be informational only. Add the disclaimer string.
 10. Identify the disease or health issue and extract it into the 'diagnoses' array.
 11. Extract all available metadata (date, location, hospital, doctor, patient name, contact, appointment time). If not found, use an empty string.
 12. Based on the diagnosis, provide prevention tips and dietary advice (what to eat and what to avoid).
+13. CARE PATHWAY: Suggest recommended provider types (e.g., Endocrinologist) and immediate non-diagnostic next steps (e.g., discuss with doctor) based on findings.
 
 ${SCHEMA_DESCRIPTION}
 

@@ -1,5 +1,14 @@
 import mongoose, { Schema, type InferSchemaType } from 'mongoose';
 
+const boundingBoxSchema = new Schema({
+  page: { type: Number },
+  x: { type: Number },
+  y: { type: Number },
+  width: { type: Number },
+  height: { type: Number },
+  confidenceScore: { type: Number, min: 0, max: 100 }
+}, { _id: false });
+
 const testResultSchema = new Schema({
   name: { type: String, required: true },
   value: { type: String, required: true },
@@ -8,6 +17,9 @@ const testResultSchema = new Schema({
   status: { type: String, enum: ['normal', 'below_range', 'above_range', 'unknown'], default: 'unknown' },
   sourceDocumentId: { type: Schema.Types.ObjectId, ref: 'Report', default: null },
   sourcePage: { type: Number, default: null },
+  boundingBox: boundingBoxSchema,
+  verifiedByDoctor: { type: Boolean, default: false },
+  correctedValue: { type: String }
 }, { _id: false });
 
 const medicalTermSchema = new Schema({
@@ -19,6 +31,9 @@ const findingSchema = new Schema({
   description: { type: String, required: true },
   sourceDocumentId: { type: Schema.Types.ObjectId, ref: 'Report', default: null },
   sourcePage: { type: Number, default: null },
+  boundingBox: boundingBoxSchema,
+  verifiedByDoctor: { type: Boolean, default: false },
+  correctedValue: { type: String }
 }, { _id: false });
 
 const analysisSchema = new Schema({
@@ -35,9 +50,13 @@ const analysisSchema = new Schema({
     eat: [{ type: String }],
     avoid: [{ type: String }],
     generalOnly: { type: Boolean, default: false },
-    disclaimer: { type: String, default: '' }
+    disclaimer: { type: String, default: 'This is an explanation, not a diagnosis.' }
   },
-  modelUsed: { type: String, default: 'openai/gpt-oss-20b' },
+  carePathwaySuggestion: {
+    recommendedProviderTypes: [{ type: String }],
+    nextSteps: [{ type: String }]
+  },
+  modelUsed: { type: String, default: 'gemini-2.5-flash' },
 }, {
   timestamps: true,
 });

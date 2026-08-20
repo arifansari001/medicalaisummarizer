@@ -55,6 +55,7 @@ export async function processReportPipeline(reportId: string): Promise<void> {
           description: f.description,
           sourceDocumentId: report._id,
           sourcePage: f.sourcePage || null,
+          boundingBox: f.boundingBox || null
         };
       }
       return {
@@ -72,6 +73,7 @@ export async function processReportPipeline(reportId: string): Promise<void> {
       status: r.status || 'unknown',
       sourceDocumentId: report._id,
       sourcePage: r.sourcePage || null,
+      boundingBox: r.boundingBox || null
     }));
 
     await Analysis.findOneAndUpdate(
@@ -87,7 +89,8 @@ export async function processReportPipeline(reportId: string): Promise<void> {
         diagnoses: analysisOutput.diagnoses || [],
         preventionTips: analysisOutput.preventionTips || [],
         dietaryAdvice: analysisOutput.dietaryAdvice || { eat: [], avoid: [] },
-        modelUsed: 'openai/gpt-oss-20b',
+        carePathwaySuggestion: analysisOutput.carePathwaySuggestion,
+        modelUsed: 'gemini-2.5-flash',
       },
       { upsert: true, new: true }
     );
@@ -98,7 +101,7 @@ export async function processReportPipeline(reportId: string): Promise<void> {
       
       const newEvent = new MedicalEvent({
         userId: report.userId,
-        type: 'medical_test', // Default to medical test
+        type: 'medical_test',
         title: analysisOutput.reportType || 'Medical Report Uploaded',
         date: isNaN(eventDate.getTime()) ? new Date() : eventDate,
         description: analysisOutput.summary,
@@ -106,6 +109,14 @@ export async function processReportPipeline(reportId: string): Promise<void> {
         hospitalName: analysisOutput.metadata.hospitalName,
         status: 'active',
         attachedReports: [report._id],
+        labResults: mappedTestResults.map(tr => ({
+          testName: tr.name,
+          value: parseFloat(tr.value) || 0,
+          unit: tr.unit,
+          referenceRange: tr.referenceRange,
+          date: isNaN(eventDate.getTime()) ? new Date() : eventDate,
+          specimenType: analysisOutput.reportType
+        }))
       });
       
       await newEvent.save();
