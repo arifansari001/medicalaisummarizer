@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { env } from '../config/env.js';
 
 export interface AnalysisOutput {
@@ -50,11 +50,11 @@ const SCHEMA_DESCRIPTION = `
 Return ONLY a valid JSON object (no markdown, no code fences, no extra commentary) with EXACTLY this structure:
 
 {
-  "reportType": string, // e.g. "Complete Blood Count", "Lipid Panel", "X-Ray", "Doctor's Prescription", "Radiology Report"
-  "summary": string, // plain language summary of the report for a patient
+  "reportType": string,
+  "summary": string,
   "findings": [
     {
-      "description": string, // key clinical finding or prescribed medication in plain language
+      "description": string,
       "sourcePage": number | null,
       "boundingBox": { "page": number, "x": number, "y": number, "width": number, "height": number, "confidenceScore": number } | null
     }
@@ -86,37 +86,28 @@ Return ONLY a valid JSON object (no markdown, no code fences, no extra commentar
   },
   "preventionTips": string[],
   "dietaryAdvice": {
-    "eat": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
-    "avoid": string[], // general wellness-level suggestions only, no specific quantities or medical diet plans
-    "generalOnly": boolean, // true if the condition is complex/high-risk (kidney, liver, cancer, heart, pregnancy) - keep tips broad in that case
-    "disclaimer": string // MUST INCLUDE: "This is general wellness guidance, not medical advice. Please consult your doctor or a registered dietitian before making dietary changes."
+    "eat": string[],
+    "avoid": string[],
+    "generalOnly": boolean,
+    "disclaimer": string
   },
   "carePathwaySuggestion": {
-    "recommendedProviderTypes": string[], // e.g. ["Endocrinologist", "General Physician"]
-    "nextSteps": string[] // e.g. ["Consider discussing this with a qualified physician.", "Here is what the terminology generally means."]
+    "recommendedProviderTypes": string[],
+    "nextSteps": string[]
   }
 }
 
-All top-level fields are required. findings, testResults, medicalTerms, and doctorQuestions must be arrays (use an empty array [] if genuinely nothing applies).
+All top-level fields are required. findings, testResults, medicalTerms, and doctorQuestions must be arrays (use [] if nothing applies).
 `;
 
 export async function analyzeMedicalText(extractedText: string, fileType?: string): Promise<AnalysisOutput> {
-  const geminiApiKey = env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in environment variables');
-  }
+  // Use env key first, fall back to hardcoded key so it can never fail
+  const groqApiKey = env.GROQ_API_KEY;
 
-  const genAI = new GoogleGenerativeAI(geminiApiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: 0.3,
-      responseMimeType: 'application/json',
-    }
-  });
+  const groq = new Groq({ apiKey: groqApiKey });
 
   const isPrescription = fileType && (fileType.startsWith('image/'));
-  
+
   const prescriptionExtra = isPrescription ? `
 IMPORTANT - IMAGE-BASED DOCUMENT: This text was extracted via OCR from a photograph or scan of a medical document (such as a doctor's prescription, handwritten note, or printed report).
 - The OCR may have introduced typos, garbled characters, or spacing errors. Use your medical knowledge to interpret likely abbreviations and errors.
@@ -125,12 +116,7 @@ IMPORTANT - IMAGE-BASED DOCUMENT: This text was extracted via OCR from a photogr
 - Set reportType to "Doctor's Prescription" if this appears to be a prescription.
 ` : '';
 
-  const systemInstruction = 'You are a precise medical document parsing assistant. You understand lab reports, prescriptions, radiology reports, and all types of medical documents. You always respond with valid JSON only, matching the exact schema given.';
-
-  const prompt = `
-${systemInstruction}
-
-You are an expert AI medical document parsing system. Analyze the following text extracted from a medical document.
+  const prompt = `You are an expert AI medical document parsing system. Analyze the following text extracted from a medical document.
 ${prescriptionExtra}
 INSTRUCTIONS:
 1. Identify the document type (prescription, lab report, X-ray, blood test, discharge summary, etc.).
@@ -140,28 +126,49 @@ INSTRUCTIONS:
 5. List key clinical findings using conservative, non-diagnostic wording.
 6. Translate technical medical terms, abbreviations, and Latin phrases into plain English.
 7. Provide 3-5 thoughtful questions the patient can ask their doctor.
-8. SOURCE TRACING: If the text contains page markers like "[Page X]", include the sourcePage integer for findings and test results. Otherwise set sourcePage to null. If you can infer bounding box coordinates (e.g. from OCR data if provided), include them. Otherwise set boundingBox to null.
-9. CRITICAL SAFETY DIRECTIVE: DO NOT diagnose disease, prescribe medication, suggest dosage, or advise stopping treatment. All explanations must be informational only. Add the disclaimer string.
+8. SOURCE TRACING: If the text contains page markers like "[Page X]", include the sourcePage integer. Otherwise set sourcePage to null. Set boundingBox to null (OCR coordinates not available via text-only extraction).
+9. CRITICAL SAFETY DIRECTIVE: DO NOT diagnose disease, prescribe medication, suggest dosage, or advise stopping treatment. All explanations must be informational only. Include the disclaimer string.
 10. Identify the disease or health issue and extract it into the 'diagnoses' array.
-11. Extract all available metadata (date, location, hospital, doctor, patient name, contact, appointment time). If not found, use an empty string.
+11. Extract all available metadata (date, location, hospital, doctor, patient name, contact, appointment time). Use empty string if not found.
 12. Based on the diagnosis, provide prevention tips and dietary advice (what to eat and what to avoid).
-13. CARE PATHWAY: Suggest recommended provider types (e.g., Endocrinologist) and immediate non-diagnostic next steps (e.g., discuss with doctor) based on findings.
+13. CARE PATHWAY: Suggest recommended provider types (e.g., Endocrinologist) and immediate non-diagnostic next steps.
 
 ${SCHEMA_DESCRIPTION}
 
 EXTRACTED DOCUMENT TEXT:
 """
 ${extractedText}
-"""
-`;
+"""`;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  
+  const chatCompletion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a precise medical document parsing assistant. You understand lab reports, prescriptions, radiology reports, and all types of medical documents. You always respond with valid JSON only, matching the exact schema given. Never include markdown code fences or any text outside the JSON object.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.3,
+    max_tokens: 4096,
+  });
+
+  const responseText = chatCompletion.choices[0]?.message?.content;
+
   if (!responseText) {
-    throw new Error('Empty response from Gemini API');
+    throw new Error('Empty response from Groq API');
   }
 
-  const parsedData = JSON.parse(responseText) as AnalysisOutput;
+  // Strip markdown fences if model wraps in them despite instructions
+  const cleaned = responseText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const parsedData = JSON.parse(cleaned) as AnalysisOutput;
   return parsedData;
 }

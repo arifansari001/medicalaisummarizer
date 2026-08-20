@@ -18,7 +18,15 @@ export async function processReportPipeline(reportId: string): Promise<void> {
     report.processingStatus = 'extracting';
     await report.save();
 
-    const buffer = await storageService.getFile(report.filePath);
+    // Prefer fileData stored in MongoDB (survives Render restarts).
+    // Fall back to filesystem path only when fileData is absent (legacy records).
+    let buffer: Buffer;
+    if ((report as any).fileData && (report as any).fileData.length > 0) {
+      buffer = (report as any).fileData as Buffer;
+    } else {
+      buffer = await storageService.getFile(report.filePath);
+    }
+
     const text = await extractTextFromFile(buffer, report.fileType);
 
     if (!text || text.trim().length === 0) {
@@ -90,7 +98,7 @@ export async function processReportPipeline(reportId: string): Promise<void> {
         preventionTips: analysisOutput.preventionTips || [],
         dietaryAdvice: analysisOutput.dietaryAdvice || { eat: [], avoid: [] },
         carePathwaySuggestion: analysisOutput.carePathwaySuggestion,
-        modelUsed: 'gemini-2.5-flash',
+        modelUsed: 'groq/llama-3.3-70b-versatile',
       },
       { upsert: true, new: true }
     );

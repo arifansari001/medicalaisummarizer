@@ -30,7 +30,7 @@ export async function uploadReport(req: AuthRequest, res: Response) {
     req.file.buffer
   );
 
-  // Create database report record
+  // Create database report record — store fileData buffer so it survives server restarts
   const report = await Report.create({
     userId: req.userId,
     eventId: eventId || null,
@@ -38,6 +38,7 @@ export async function uploadReport(req: AuthRequest, res: Response) {
     fileType: req.file.mimetype,
     fileSize: req.file.size,
     filePath: savedFile.filePath,
+    fileData: req.file.buffer,  // persist raw bytes in MongoDB
     processingStatus: 'uploaded',
   });
 

@@ -13,7 +13,7 @@ async function start() {
     // Start server
     app.listen(env.PORT, () => {
       console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-      console.log(`✅ Loaded Gemini API Key`);
+      console.log(`✅ Loaded Groq API Key — AI analysis ready`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

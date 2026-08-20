@@ -11,6 +11,7 @@ const reportSchema = new Schema({
   fileType: { type: String, required: true },
   fileSize: { type: Number, required: true },
   filePath: { type: String, required: true },
+  fileData: { type: Buffer, default: null },  // file bytes stored in DB for persistent access
   extractedText: { type: String, default: '' },
   reportType: { type: String, default: '' },
   processingStatus: { type: String, enum: PROCESSING_STATUSES, default: 'uploaded' },

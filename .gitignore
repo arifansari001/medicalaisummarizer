@@ -1,6 +1,14 @@
 node_modules/
 dist/
+
+# Environment files — NEVER commit these, they contain secrets
 .env
+.env.*
+server/.env
+server/.env.*
+client/.env
+client/.env.*
+
 uploads/
 *.log
 .DS_Store

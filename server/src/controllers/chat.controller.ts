@@ -1,6 +1,6 @@
 import { type Response } from 'express';
 import { type AuthRequest } from '../middleware/auth.middleware.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { env } from '../config/env.js';
 import { User } from '../models/User.js';
 import { MedicalStore } from '../models/MedicalStore.js';
@@ -102,23 +102,12 @@ export const handleChatMessage = async (req: AuthRequest, res: Response) => {
     }
 
     // ── STEP 2: Build conversational prompt with safety rules baked in ──────────
-    const geminiApiKey = env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured in environment variables');
-    }
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 600,
-        responseMimeType: 'application/json',
-      }
-    });
+    const groqApiKey = env.GROQ_API_KEY;
+    const groq = new Groq({ apiKey: groqApiKey });
 
     const conversationHistory = history.slice(-8).map(h => ({
-      role: (h.role === 'patient' ? 'user' : 'model') as 'user' | 'model',
-      parts: [{ text: h.content }],
+      role: (h.role === 'patient' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: h.content,
     }));
 
     const systemPrompt = `You are MedSummary AI's health assistant. Your ONLY job is to provide general educational health information. You are NOT a doctor and must NEVER:
@@ -127,12 +116,12 @@ export const handleChatMessage = async (req: AuthRequest, res: Response) => {
 - Suggest stopping or changing prescribed medication
 - Make the patient feel their condition is certainly serious or certainly benign
 
-REQUIRED RESPONSE FORMAT — respond with a valid JSON object only, no markdown:
+REQUIRED RESPONSE FORMAT — respond with a valid JSON object only, no markdown, no code fences:
 {
   "content": "Your conversational, empathetic response in plain language (1–3 paragraphs). Always phrase findings as 'this may be related to...' or 'these symptoms are sometimes associated with...' — never as facts. End with an explicit recommendation to confirm with a doctor.",
-  "certaintyLevel": "well_established" | "worth_confirming" | "seek_professional",
+  "certaintyLevel": "well_established" or "worth_confirming" or "seek_professional",
   "suggestedSpecialty": "Specialty name (Cardiology, Neurology, General Medicine, Orthopedics, Pediatrics, Gynecology, Dermatology, Nephrology, Endocrinology, Gastroenterology, Pulmonology, Psychiatry) or null if not applicable",
-  "queryType": "medicine" | "bloodbank" | "test" | "general" | "none"
+  "queryType": "medicine" or "bloodbank" or "test" or "general" or "none"
 }
 
 Certainty guidelines:
@@ -147,16 +136,18 @@ queryType guidelines:
 - "general": General health questions, symptom discussions, report explanations
 - "none": Greetings, unrelated questions`;
 
-    const chat = model.startChat({
-      history: [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'model', parts: [{ text: 'Understood. I will strictly follow these rules and always output the required JSON format.' }] },
-        ...conversationHistory
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory,
+        { role: 'user', content: fullMessage },
       ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.4,
+      max_tokens: 600,
     });
 
-    const completion = await chat.sendMessage([{ text: fullMessage }]);
-    const responseText = completion.response.text();
+    const responseText = chatCompletion.choices[0]?.message?.content;
     if (!responseText) throw new Error('Empty response from AI');
 
     let parsed: {
@@ -166,7 +157,13 @@ queryType guidelines:
       queryType: string;
     };
     try {
-      parsed = JSON.parse(responseText);
+      // Strip markdown fences if model wraps in them
+      const cleaned = responseText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      parsed = JSON.parse(cleaned);
     } catch {
       parsed = {
         content: responseText,
